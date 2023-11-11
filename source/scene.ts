@@ -4,7 +4,9 @@ import {
   AxesHelper,
   BoxGeometry,
   Clock,
+  Color,
   GridHelper,
+  Group,
   LoadingManager,
   Mesh,
   MeshLambertMaterial,
@@ -34,6 +36,7 @@ let loadingManager: LoadingManager
 let ambientLight: AmbientLight
 let pointLight: PointLight
 let cube: Mesh
+let cubeGroup: Group
 let camera: PerspectiveCamera
 let cameraControls: OrbitControls
 let dragControls: DragControls
@@ -80,7 +83,7 @@ function init() {
 
   // ===== 💡 LIGHTS =====
   {
-    ambientLight = new AmbientLight('white', 0.4)
+    ambientLight = new AmbientLight('white', 5)
     pointLight = new PointLight('#ffdca8', 1.2, 100)
     pointLight.position.set(-2, 3, 3)
     pointLight.castShadow = true
@@ -96,6 +99,12 @@ function init() {
   // ===== 📦 OBJECTS =====
   {
     const sideLength = 1
+    const gridSize = 10;
+    const spacing = 1.2;
+    const minHeight = 0.2;
+    const maxHeight = 2.0;
+    const gridCenterOffset = (gridSize - 1) * spacing * 0.5;
+
     const cubeGeometry = new BoxGeometry(sideLength, sideLength, sideLength)
     const cubeMaterial = new MeshStandardMaterial({
       color: '#f70893',
@@ -105,11 +114,16 @@ function init() {
     cube = new Mesh(cubeGeometry, cubeMaterial)
     cube.castShadow = true
     cube.position.y = 0.5
+    cube.position.set(
+      (gridSize - 1) * spacing * 0.5,
+      0.5,
+      (gridSize - 1) * spacing * 0.5
+    );
 
-    const planeGeometry = new PlaneGeometry(3, 3)
+    const planeGeometry = new PlaneGeometry(15, 15)
     const planeMaterial = new MeshLambertMaterial({
       color: 'gray',
-      emissive: 'teal',
+      emissive: 'white',
       emissiveIntensity: 0.2,
       side: 2,
       transparent: true,
@@ -121,21 +135,52 @@ function init() {
 
     scene.add(cube)
     scene.add(plane)
+
+    cubeGroup = new Group();
+
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        if (i == 9 && j ==9) {
+          break;
+        }
+        const sideLength = 1;
+        const cubeGeometry = new BoxGeometry(sideLength, sideLength, sideLength);
+
+        const randomHeight = Math.random() * (maxHeight - minHeight) + minHeight;
+        const randomColor = new Color('#ff66a1').lerp(new Color('#ffffff'), Math.random());
+
+        const cubeMaterial = new MeshStandardMaterial({
+          color: randomColor,
+          metalness: 0.5,
+          roughness: 0.7,
+        });
+
+        const tmpCube = new Mesh(cubeGeometry, cubeMaterial);
+        tmpCube.castShadow = true;
+
+        tmpCube.position.set(i * spacing - gridCenterOffset, randomHeight / 2, j * spacing - gridCenterOffset);
+        tmpCube.scale.set(1, randomHeight, 1);
+
+        cubeGroup.add(tmpCube);
+      }
+    }
+
+  scene.add(cubeGroup);
   }
 
   // ===== 🎥 CAMERA =====
   {
     camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
-    camera.position.set(2, 2, 5)
+    camera.position.set(14,7, 4)
   }
 
   // ===== 🕹️ CONTROLS =====
   {
     cameraControls = new OrbitControls(camera, canvas)
-    cameraControls.target = cube.position.clone()
-    cameraControls.enableDamping = true
-    cameraControls.autoRotate = false
-    cameraControls.update()
+    // cameraControls.target = cube.position.clone()
+    // cameraControls.enableDamping = true
+    // cameraControls.autoRotate = false
+    // cameraControls.update()
 
     dragControls = new DragControls([cube], camera, renderer.domElement)
     dragControls.addEventListener('hoveron', (event) => {
@@ -196,9 +241,9 @@ function init() {
 
     const cubeOneFolder = gui.addFolder('Cube one')
 
-    cubeOneFolder.add(cube.position, 'x').min(-5).max(5).step(0.5).name('pos x')
-    cubeOneFolder.add(cube.position, 'y').min(-5).max(5).step(0.5).name('pos y')
-    cubeOneFolder.add(cube.position, 'z').min(-5).max(5).step(0.5).name('pos z')
+    cubeOneFolder.add(cube.position, 'x').min(-10).max(10).step(0.1).name('pos x')
+    cubeOneFolder.add(cube.position, 'y').min(-10).max(10).step(0.1).name('pos y')
+    cubeOneFolder.add(cube.position, 'z').min(-10).max(10).step(0.1).name('pos z')
 
     cubeOneFolder.add(cube.material, 'wireframe')
     cubeOneFolder.addColor(cube.material, 'color')
