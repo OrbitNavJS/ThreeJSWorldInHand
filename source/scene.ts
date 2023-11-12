@@ -47,7 +47,7 @@ animate()
 function init() {
   // ===== 🖼️ CANVAS, RENDERER, & SCENE =====
   {
-    canvas = document.querySelector(`canvas#${CANVAS_ID}`)!
+    canvas = document.querySelector(`canvas#${CANVAS_ID}`)! as HTMLCanvasElement
     renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
@@ -94,6 +94,7 @@ function init() {
     })
     const plane = new Mesh(planeGeometry, planeMaterial)
     plane.rotateX(Math.PI / 2)
+    plane.position.y = -0.001
     plane.receiveShadow = true
     scene.add(plane)
 
@@ -184,8 +185,8 @@ function init() {
     cubesFolder.add(cubeGroup.rotation, 'z', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate z')
     
     cubesFolder.addColor({ color: '#ff66a1' }, 'color').onChange((color) => {
-      cubeGroup.children.forEach((cube) => {
-        (cube.material as MeshStandardMaterial).color.set(new Color(color).lerp(new Color('#ffffff'), Math.random()))
+      cubeGroup.children.forEach((cube: Mesh) => {
+        (cube.material as MeshStandardMaterial).color = new Color(color).lerp(new Color('#ffffff'), Math.random())
       })
     });
 
