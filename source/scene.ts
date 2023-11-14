@@ -184,7 +184,7 @@ function init() {
     cubesFolder.add(cubeGroup.rotation, 'y', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate y')
     cubesFolder.add(cubeGroup.rotation, 'z', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate z')
     
-    cubesFolder.addColor({ color: '#ff66a1' }, 'color').onChange((color) => {
+    cubesFolder.addColor({ color: '#ff66a1' }, 'color').onChange((color: Color) => {
       cubeGroup.children.forEach((cube: Mesh) => {
         (cube.material as MeshStandardMaterial).color = new Color(color).lerp(new Color('#ffffff'), Math.random())
       })
