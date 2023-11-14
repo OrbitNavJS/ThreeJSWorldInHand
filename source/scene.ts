@@ -180,18 +180,20 @@ function init() {
     cubesFolder.add(cubeGroup.position, 'y').min(-10).max(10).step(0.1).name('pos y')
     cubesFolder.add(cubeGroup.position, 'z').min(-10).max(10).step(0.1).name('pos z')
 
-    cubesFolder.add(cubeGroup.rotation, 'x', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate x')
-    cubesFolder.add(cubeGroup.rotation, 'y', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate y')
-    cubesFolder.add(cubeGroup.rotation, 'z', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate z')
-    
-    cubesFolder.addColor({ color: '#ff66a1' }, 'color').onChange((color: Color) => {
-      cubeGroup.children.forEach((cube: Mesh) => {
-        (cube.material as MeshStandardMaterial).color = new Color(color).lerp(new Color('#ffffff'), Math.random())
-      })
-    });
+    cubeOneFolder.add(cube.material, 'wireframe')
+    cubeOneFolder.addColor(cube.material, 'color')
+    cubeOneFolder.add(cube.material, 'metalness', 0, 1, 0.1)
+    cubeOneFolder.add(cube.material, 'roughness', 0, 1, 0.1)
 
-    cubesFolder.add(animation, 'enabled').name('animated')
-    
+    cubeOneFolder.add(cube.rotation, 'x', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate x')
+    cubeOneFolder.add(cube.rotation, 'y', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate y')
+    cubeOneFolder.add(cube.rotation, 'z', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate z')
+
+    cubeOneFolder.add(animation, 'enabled').name('animated')
+
+    const controlsFolder = gui.addFolder('Controls')
+    controlsFolder.add(dragControls, 'enabled').name('drag controls')
+
     const lightsFolder = gui.addFolder('Lights')
     lightsFolder.add(ambientLight, 'visible').name('ambient light')
 
