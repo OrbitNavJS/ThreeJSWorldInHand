@@ -17,7 +17,7 @@ import {
   Scene,
   WebGLRenderer,
 } from 'three'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import { WorldInHandControls } from './worldInHandControls'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import * as animations from './helpers/animations'
 import { toggleFullScreen } from './helpers/fullscreen'
@@ -33,7 +33,7 @@ let loadingManager: LoadingManager
 let ambientLight: AmbientLight
 let cubeGroup: Group
 let camera: PerspectiveCamera
-let cameraControls: OrbitControls
+let cameraControls: WorldInHandControls
 let axesHelper: AxesHelper
 let clock: Clock
 let stats: Stats
@@ -142,7 +142,7 @@ function init() {
 
   // ===== 🕹️ CONTROLS =====
   {
-    cameraControls = new OrbitControls(camera, canvas)
+    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement)
 
     // Full screen
     window.addEventListener('dblclick', (event) => {

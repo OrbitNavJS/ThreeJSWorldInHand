@@ -133,7 +133,7 @@ class WorldInHandControls extends EventDispatcher {
 		this.panSpeed = 1.0;
 		this.screenSpacePanning = true; // if false, pan orthogonal to world-space direction camera.up
 		this.keyPanSpeed = 7.0;	// pixels moved per arrow key push
-		this.zoomToCursor = false;
+		this.zoomToCursor = true;
 
 		// Set to true to automatically rotate around the target
 		// If auto-rotate is enabled, you must call controls.update() in your animation loop
@@ -229,7 +229,7 @@ class WorldInHandControls extends EventDispatcher {
 
 			const twoPI = 2 * Math.PI;
 
-			return function update(this: any,  deltaTime: number | null = null ) {
+			return function update( this: any,  deltaTime: number | null = null ) {
 
 				const position = scope.object.position;
 
