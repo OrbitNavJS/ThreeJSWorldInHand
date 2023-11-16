@@ -11,7 +11,9 @@ import {
 	MathUtils,
 	Matrix4,
 	PerspectiveCamera,
-	OrthographicCamera
+	OrthographicCamera,
+	Raycaster,
+	Scene
 } from 'three';
 
 // OrbitControls performs orbiting, dollying (zooming), and panning.
@@ -63,6 +65,7 @@ class WorldInHandControls extends EventDispatcher {
 	public target0: Vector3
 	public position0: Vector3
 	public zoom0: number
+	public scene: Scene
 	protected _domElementKeyEvents: HTMLElement | null
 
 	public getPolarAngle: Function
@@ -75,7 +78,7 @@ class WorldInHandControls extends EventDispatcher {
 	public update: Function
 	public dispose: Function
 	
-	constructor( object: PerspectiveCamera | OrthographicCamera, domElement: HTMLCanvasElement ) {
+	constructor( object: PerspectiveCamera | OrthographicCamera, scene: Scene, domElement: HTMLCanvasElement ) {
 
 		super();
 
@@ -153,6 +156,8 @@ class WorldInHandControls extends EventDispatcher {
 		this.target0 = this.target.clone();
 		this.position0 = this.object.position.clone();
 		this.zoom0 = this.object.zoom;
+
+		this.scene = scene
 
 		// the target DOM element for key events
 		this._domElementKeyEvents = null;
@@ -613,13 +618,40 @@ class WorldInHandControls extends EventDispatcher {
 					const position = camera.position;
 					offset.copy( position ).sub( scope.target );
 					let targetDistance = offset.length();
+					
+					const normalizedStart = new Vector2().copy(panStart).divide(new Vector2(element.clientWidth, element.clientHeight)).multiplyScalar(2).subScalar(1)
+					const normalizedEnd = new Vector2().copy(panEnd).divide(new Vector2(element.clientWidth, element.clientHeight)).multiplyScalar(2).subScalar(1)
+
+					const raycaster = new Raycaster()
+					raycaster.setFromCamera(normalizedStart.clone(), camera)
+					let intersects = raycaster.intersectObjects( scene.children)
+					if (intersects.length === 0) return
+					const worldStart = intersects[0].point
+
+					raycaster.setFromCamera(normalizedEnd.clone(), camera)
+					intersects = raycaster.intersectObjects( scene.children)
+					if (intersects.length === 0) return
+					const worldEnd = intersects[0].point
+					
+					console.log("worldStart")
+					console.log(worldStart)
+					console.log("worldend")
+					console.log(worldEnd)
+				
+					const worldDiff = worldEnd.sub(worldStart)
+					worldDiff.project(camera)
 
 					// half of the fov is center to top of screen
 					targetDistance *= Math.tan( ( camera.fov / 2 ) * Math.PI / 180.0 );
 
 					// we use only clientHeight here so aspect ratio does not distort speed
-					panLeft( 2 * deltaX * targetDistance / element.clientHeight, camera.matrix );
-					panUp( 2 * deltaY * targetDistance / element.clientHeight, camera.matrix );
+					//panLeft(worldDiff.x, camera.matrix)
+					//panUp(worldDiff.y, camera.matrix)
+
+					/*panLeft(worldEnd.sub(worldStart).x * targetDistance, camera.matrix)
+					panUp(worldEnd.sub(worldStart).y * targetDistance, camera.matrix)*/
+					//panLeft( 2 * deltaX * targetDistance / element.clientHeight, camera.matrix );
+					//panUp( 2 * deltaY * targetDistance / element.clientHeight, camera.matrix );
 
 				} else if ( scope.object.isOrthographicCamera ) {
 					const camera = scope.object as OrthographicCamera

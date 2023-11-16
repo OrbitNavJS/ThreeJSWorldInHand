@@ -142,7 +142,7 @@ function init() {
 
   // ===== 🕹️ CONTROLS =====
   {
-    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement)
+    cameraControls = new WorldInHandControls(camera, scene, canvas as HTMLCanvasElement)
 
     // Full screen
     window.addEventListener('dblclick', (event) => {
