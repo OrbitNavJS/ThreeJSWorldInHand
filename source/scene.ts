@@ -5,6 +5,8 @@ import {
   BoxGeometry,
   Clock,
   Color,
+  DepthFormat,
+  DepthTexture,
   GridHelper,
   Group,
   LoadingManager,
@@ -15,6 +17,9 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   Scene,
+  UnsignedIntType,
+  Vector3,
+  WebGLRenderTarget,
   WebGLRenderer,
 } from 'three'
 import { WorldInHandControls } from './worldInHandControls'
@@ -28,6 +33,7 @@ const CANVAS_ID = 'scene'
 
 let canvas: HTMLElement
 let renderer: WebGLRenderer
+let renderTarget: WebGLRenderTarget
 let scene: Scene
 let loadingManager: LoadingManager
 let ambientLight: AmbientLight
@@ -52,6 +58,9 @@ function init() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
+    renderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight);
+    renderTarget.depthTexture = new DepthTexture(window.innerWidth, window.innerHeight, UnsignedIntType);
+    renderTarget.depthTexture.format = DepthFormat
     scene = new Scene()
   }
 
@@ -138,11 +147,12 @@ function init() {
   {
     camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
     camera.position.set(14,7, 4)
+    camera.lookAt(new Vector3(0, 0, 0))
   }
 
   // ===== 🕹️ CONTROLS =====
   {
-    cameraControls = new WorldInHandControls(camera, scene, canvas as HTMLCanvasElement)
+    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer)
 
     // Full screen
     window.addEventListener('dblclick', (event) => {
@@ -158,7 +168,7 @@ function init() {
     axesHelper.visible = false
     scene.add(axesHelper)
 
-    const gridHelper = new GridHelper(20, 20, 'teal', 'darkgray')
+    const gridHelper = new GridHelper(15, 15, 'teal', 'darkgray')
     gridHelper.position.y = -0.01
     scene.add(gridHelper)
   }
@@ -198,8 +208,8 @@ function init() {
     const helpersFolder = gui.addFolder('Helpers')
     helpersFolder.add(axesHelper, 'visible').name('axes')
 
-    const cameraFolder = gui.addFolder('Camera')
-    cameraFolder.add(cameraControls, 'autoRotate')
+    /*const cameraFolder = gui.addFolder('Camera')
+    cameraFolder.add(cameraControls, 'autoRotate')*/
 
     // persist GUI state in local storage on changes
     gui.onFinishChange(() => {
@@ -240,5 +250,8 @@ function animate() {
 
   cameraControls.update()
 
+  renderer.setRenderTarget(renderTarget)
+  renderer.render(scene, camera)
+  renderer.setRenderTarget(null)
   renderer.render(scene, camera)
 }
