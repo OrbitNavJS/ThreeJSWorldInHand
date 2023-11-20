@@ -18,6 +18,7 @@ import {
   PlaneGeometry,
   Scene,
   UnsignedIntType,
+  FloatType,
   Vector3,
   WebGLRenderTarget,
   WebGLRenderer,
@@ -31,7 +32,8 @@ import './style.css'
 
 const CANVAS_ID = 'scene'
 
-let canvas: HTMLElement
+let canvas: HTMLCanvasElement
+let context: WebGL2RenderingContext
 let renderer: WebGLRenderer
 let renderTarget: WebGLRenderTarget
 let scene: Scene
@@ -54,12 +56,13 @@ function init() {
   // ===== 🖼️ CANVAS, RENDERER, & SCENE =====
   {
     canvas = document.querySelector(`canvas#${CANVAS_ID}`)! as HTMLCanvasElement
-    renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true })
+    context = canvas.getContext('webgl2') as WebGL2RenderingContext
+    renderer = new WebGLRenderer({ canvas, context, antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
     renderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    renderTarget.depthTexture = new DepthTexture(window.innerWidth, window.innerHeight, UnsignedIntType);
+    renderTarget.depthTexture = new DepthTexture(window.innerWidth, window.innerHeight, FloatType);
     renderTarget.depthTexture.format = DepthFormat
     scene = new Scene()
   }
