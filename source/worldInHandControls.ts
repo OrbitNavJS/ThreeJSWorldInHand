@@ -1,11 +1,11 @@
 import {
   RedFormat,
-	EventDispatcher,
+  EventDispatcher,
   FloatType,
   Mesh,
-	PerspectiveCamera,
+  PerspectiveCamera,
   PlaneGeometry,
-	OrthographicCamera,
+  OrthographicCamera,
   Scene,
   ShaderMaterial,
   TypedArray,
@@ -14,7 +14,7 @@ import {
   Vector2,
   Vector3,
   WebGLRenderTarget,
-  WebGLRenderer
+  WebGLRenderer, RGBAFormat
 } from 'three';
 
 const _startEvent = {type: 'start'}
@@ -67,7 +67,7 @@ class WorldInHandControls extends EventDispatcher {
       this.scene = new Scene();
       this.scene.add(planeMesh);
   
-      this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RedFormat, type: FloatType});
+      this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RGBAFormat, type: FloatType});
 	  }
 
     function onMouseWheel(event: WheelEvent): void {
@@ -107,7 +107,7 @@ class WorldInHandControls extends EventDispatcher {
       renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
 
-      const depthPixel = new Float32Array(1);
+      const depthPixel = new Float32Array(4);
       renderer.readRenderTargetPixels(scope.planeRenderTarget, x, y, 1, 1, depthPixel);
 
       zoomDirection.set(mousePosition.x, mousePosition.y, depthPixel[0]).unproject(camera).sub(camera.position).normalize();
