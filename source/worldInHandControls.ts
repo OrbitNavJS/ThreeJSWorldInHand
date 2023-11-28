@@ -65,9 +65,6 @@ class WorldInHandControls extends EventDispatcher {
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
 
-    const time = 0;
-    const test = 677
-
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
       planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
       planeMaterial.vertexShader = vertexShader;
@@ -76,8 +73,6 @@ class WorldInHandControls extends EventDispatcher {
       this.scene.add(planeMesh);
   
       this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RedFormat, type: FloatType});
-
-      rotate(new Vector2(0, 0.01))
 	  }
 
     function onMouseWheel(event: WheelEvent): void {
@@ -89,14 +84,14 @@ class WorldInHandControls extends EventDispatcher {
 
     function onPointerDown(event: PointerEvent): void {
       if (event.button !== 0) return;
-      scope.domElement.addEventListener('pointermove', handleMouseMoveRotate(event));
+      scope.domElement.addEventListener('pointermove', handleMouseMoveRotate);
       scope.domElement.addEventListener('pointerup', onPointerUp);
 
       handleMouseDownRotate(event);
     }
 
     function onPointerUp( event: PointerEvent ) {
-      scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate(event));
+      scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate);
       scope.domElement.removeEventListener('pointerup', onPointerUp);
 
       scope.dispatchEvent( _endEvent );
@@ -121,7 +116,7 @@ class WorldInHandControls extends EventDispatcher {
 
     function handleMouseMoveRotate(event: PointerEvent): void {
       rotateEnd.set( event.clientX, event.clientY );
-      rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( 1 );
+      rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( 0.005 );
 
       rotate(rotateDelta);
 
@@ -135,17 +130,15 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function rotate(delta: Vector2): void {
-      //const lookTo = cameraLookAt.clone().sub(camera.position);
       const lookTo = camera.position.clone().sub(cameraLookAt);
-      //console.log(lookTo)
       camera.position.sub(lookTo);
-      const rotationMatrix = new Matrix4().makeRotationFromEuler(new Euler(0, delta.x, delta.y));
-      camera.position.add(lookTo.applyMatrix4(rotationMatrix));
-      //console.log(lookTo)
-      camera.lookAt(cameraLookAt);
-      //camera.position.applyMatrix4(rotationMatrix).add(lookTo);
 
-      //console.log('here')
+      const screenX = new Vector3().crossVectors(lookTo, camera.up).normalize();
+      const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
+      rotationMatrix.multiply(new Matrix4().makeRotationAxis(screenX, delta.y));
+
+      camera.position.add(lookTo.applyMatrix4(rotationMatrix));
+      camera.lookAt(cameraLookAt);
 
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();

@@ -21,7 +21,7 @@ import {
   FloatType,
   Vector3,
   WebGLRenderTarget,
-  WebGLRenderer,
+  WebGLRenderer
 } from 'three'
 import { WorldInHandControls } from './worldInHandControls'
 import Stats from 'three/examples/jsm/libs/stats.module'
@@ -29,6 +29,7 @@ import * as animations from './helpers/animations'
 import { toggleFullScreen } from './helpers/fullscreen'
 import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
+import { OrbitControls } from './orbitControls'
 
 const CANVAS_ID = 'scene'
 
@@ -149,13 +150,14 @@ function init() {
   // ===== 🎥 CAMERA =====
   {
     camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
-    camera.position.set(14,7, 4)
+    camera.position.set(14,0, 4)
     camera.lookAt(new Vector3(0, 0, 0))
   }
 
   // ===== 🕹️ CONTROLS =====
   {
     cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer)
+    //cameraControls = new OrbitControls(camera, canvas);
 
     // Full screen
     window.addEventListener('dblclick', (event) => {
