@@ -1,11 +1,11 @@
 import {
   RedFormat,
-	EventDispatcher,
+  EventDispatcher,
   FloatType,
   Mesh,
-	PerspectiveCamera,
+  PerspectiveCamera,
   PlaneGeometry,
-	OrthographicCamera,
+  OrthographicCamera,
   Scene,
   ShaderMaterial,
   TypedArray,
@@ -14,8 +14,9 @@ import {
   Vector2,
   Vector3,
   WebGLRenderTarget,
-  WebGLRenderer
+  WebGLRenderer, Matrix4, Euler
 } from 'three';
+import {cameraPosition} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 
 const _startEvent = {type: 'start'}
 const _endEvent = {type: 'end'}
@@ -64,6 +65,9 @@ class WorldInHandControls extends EventDispatcher {
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
 
+    const time = 0;
+    const test = 677
+
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
       planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
       planeMaterial.vertexShader = vertexShader;
@@ -72,6 +76,8 @@ class WorldInHandControls extends EventDispatcher {
       this.scene.add(planeMesh);
   
       this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RedFormat, type: FloatType});
+
+      rotate(new Vector2(0, 0.01))
 	  }
 
     function onMouseWheel(event: WheelEvent): void {
@@ -93,8 +99,8 @@ class WorldInHandControls extends EventDispatcher {
       scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate(event));
       scope.domElement.removeEventListener('pointerup', onPointerUp);
 
-			scope.dispatchEvent( _endEvent );
-		}
+      scope.dispatchEvent( _endEvent );
+    }
 
 	// TODO: on window resize, resize buffer
 
@@ -115,12 +121,12 @@ class WorldInHandControls extends EventDispatcher {
 
     function handleMouseMoveRotate(event: PointerEvent): void {
       rotateEnd.set( event.clientX, event.clientY );
-			rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( 1 );
+      rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( 1 );
 
-			rotate(rotateDelta);
+      rotate(rotateDelta);
 
-			rotateStart.copy( rotateEnd );
-			scope.update();
+      rotateStart.copy( rotateEnd );
+      scope.update();
     }
 
     function zoom(amount: number): void {
@@ -129,44 +135,31 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function rotate(delta: Vector2): void {
-      //console.log(camera.position);
-      const lookTo = cameraLookAt.clone().sub(camera.position);
-      const lookToLength = lookTo.length();
-      //delta x doesnt make sense here
-      const x = Math.atan(delta.x * 0.001) * lookToLength;
-      camera.translateX(x);
+      //const lookTo = cameraLookAt.clone().sub(camera.position);
+      const lookTo = camera.position.clone().sub(cameraLookAt);
+      //console.log(lookTo)
+      camera.position.sub(lookTo);
+      const rotationMatrix = new Matrix4().makeRotationFromEuler(new Euler(0, delta.x, delta.y));
+      camera.position.add(lookTo.applyMatrix4(rotationMatrix));
+      //console.log(lookTo)
       camera.lookAt(cameraLookAt);
-      const y = Math.atan(delta.y * 0.001) * lookToLength;
-      camera.translateY(y);
-      camera.lookAt(cameraLookAt);
-      camera.updateMatrixWorld();
-      camera.updateProjectionMatrix();
+      //camera.position.applyMatrix4(rotationMatrix).add(lookTo);
 
-      //const worldDelta = new Vector3(delta.x, delta.y, 0.1).unproject(camera);
-      /*const worldStart = new Vector3(rotateStart.x, rotateStart.y, 0).unproject(camera);
-      const worldEnd = new Vector3(rotateEnd.x, rotateEnd.y, 0).unproject(camera);
-      const worldDelta = worldEnd.clone().sub(worldStart).multiplyScalar(0.1);
-      //console.log(worldDelta);
-      
-      const untenRechts = camera.position.clone().add(worldDelta);
-      const hin = cameraLookAt.clone().sub(untenRechts);
-      const lookTo = cameraLookAt.clone().sub(camera.position);
-      hin.multiplyScalar(hin.clone().dot(lookTo)/lookTo.length());
-      camera.position.copy(hin.add(cameraLookAt));
+      //console.log('here')
+
+      camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
-      console.log("2");
-      console.log(camera.position);*/
     }
 
     function updateMouseParameters(event: WheelEvent): void {
       const rect = scope.domElement.getBoundingClientRect();
-			const x = event.clientX - rect.left;
-			const y = event.clientY - rect.top;
-			const w = rect.width;
-			const h = rect.height;
-      
-			mousePosition.x = ( x / w ) * 2 - 1;
-			mousePosition.y = - ( y / h ) * 2 + 1;
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      const w = rect.width;
+      const h = rect.height;
+
+      mousePosition.x = ( x / w ) * 2 - 1;
+      mousePosition.y = - ( y / h ) * 2 + 1;
 
       renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
@@ -180,6 +173,8 @@ class WorldInHandControls extends EventDispatcher {
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );
 		scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
+
+    rotate(new Vector2(0.1, 0));
 	//addEventListener( 'resize', onWindowResize );
   }
 }
