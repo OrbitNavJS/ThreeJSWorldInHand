@@ -60,6 +60,9 @@ class WorldInHandControls extends EventDispatcher {
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
 
+    const time = 0;
+    const test = 677;
+
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
       planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
       planeMaterial.vertexShader = vertexShader;
@@ -104,11 +107,16 @@ class WorldInHandControls extends EventDispatcher {
 			mousePosition.x = ( x / w ) * 2 - 1;
 			mousePosition.y = - ( y / h ) * 2 + 1;
 
-      renderer.setRenderTarget(scope.planeRenderTarget);
-      renderer.render(scope.scene, camera);
+      //renderer.setRenderTarget(scope.planeRenderTarget);
+      //renderer.render(scope.scene, camera);
 
       const depthPixel = new Float32Array(4);
-      renderer.readRenderTargetPixels(scope.planeRenderTarget, x, y, 1, 1, depthPixel);
+      const gl = renderer.getContext() as WebGL2RenderingContext;
+      gl.readBuffer(gl.DEPTH_ATTACHMENT);
+      //renderer.readRenderTargetPixels(renderTarget, x, y, 1, 1, depthPixel);
+      gl.readPixels(x, y, 1, 1, gl.DEPTH_COMPONENT, gl.FLOAT, depthPixel);
+
+      console.log(depthPixel[0]);
 
       zoomDirection.set(mousePosition.x, mousePosition.y, depthPixel[0]).unproject(camera).sub(camera.position).normalize();
     }
