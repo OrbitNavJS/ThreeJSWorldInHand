@@ -62,8 +62,8 @@ function init() {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
-    renderTarget = new WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    renderTarget.depthTexture = new DepthTexture(window.innerWidth, window.innerHeight, FloatType);
+    renderTarget = new WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight);
+    renderTarget.depthTexture = new DepthTexture(canvas.clientWidth, canvas.clientHeight, FloatType);
     renderTarget.depthTexture.format = DepthFormat
     scene = new Scene()
   }
@@ -251,6 +251,7 @@ function animate() {
     const canvas = renderer.domElement
     camera.aspect = canvas.clientWidth / canvas.clientHeight
     camera.updateProjectionMatrix()
+    renderTarget.setSize(canvas.clientWidth, canvas.clientHeight)
   }
 
   cameraControls.update()
