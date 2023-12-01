@@ -167,18 +167,25 @@ class WorldInHandControls extends EventDispatcher {
 
     function zoom(amount: number): void {
       camera.position.addScaledVector(zoomDirection, amount);
+
+      // TODO: update cameralookAt
+
       camera.updateMatrixWorld();
     }
 
     function rotate(delta: Vector2): void {
       const lookTo = camera.position.clone().sub(cameraLookAt);
+
       camera.position.sub(lookTo);
+      lookTo.sub(cameraLookAt);
 
       const screenX = new Vector3().crossVectors(lookTo, camera.up).normalize();
       const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
       rotationMatrix.multiply(new Matrix4().makeRotationAxis(screenX, delta.y));
 
-      camera.position.add(lookTo.applyMatrix4(rotationMatrix));
+      lookTo.applyMatrix4(rotationMatrix);
+      lookTo.add(cameraLookAt);
+      camera.position.add(lookTo);
       camera.lookAt(cameraLookAt);
 
       camera.updateProjectionMatrix();
