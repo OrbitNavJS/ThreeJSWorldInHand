@@ -16,7 +16,9 @@ import {
   WebGLRenderTarget,
   WebGLRenderer, 
   RGBAFormat, 
-  Matrix4
+  Matrix4,
+  SphereGeometry,
+  MeshBasicMaterial
 } from 'three';
 import {cameraPosition} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 
@@ -37,6 +39,7 @@ const fragmentShader =
 
   void main() {
     gl_FragColor = texture(uDepthTexture, vUV);
+    //gl_FragColor = vec4(vUV, 0., 1.);
   }`
 ;
 
@@ -49,7 +52,7 @@ class WorldInHandControls extends EventDispatcher {
 
   public update: Function
 
-  constructor (camera: PerspectiveCamera /* | OrthographicCamera */, domElement: HTMLCanvasElement, renderTarget: WebGLRenderTarget, renderer: WebGLRenderer){
+  constructor (camera: PerspectiveCamera /* | OrthographicCamera */, domElement: HTMLCanvasElement, renderTarget: WebGLRenderTarget, renderer: WebGLRenderer, scene: Scene){
 	  super();
     const scope = this;
     this.camera = camera;
@@ -67,6 +70,12 @@ class WorldInHandControls extends EventDispatcher {
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
 
+    const testSphereGeometry = new SphereGeometry(1);
+    const testSphereMaterial = new MeshBasicMaterial();
+    const testSphere = new Mesh(testSphereGeometry, testSphereMaterial);
+
+    scene.add(testSphere);
+
     //let depthBufferArray = new Float32Array(0);
 
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
@@ -79,10 +88,10 @@ class WorldInHandControls extends EventDispatcher {
       this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RGBAFormat, type: FloatType});
       
       // SHOW FRAMEBUFFER
-      /*renderer.setRenderTarget(scope.planeRenderTarget);
+      renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
 
-      depthBufferArray = new Float32Array(renderTarget.width * renderTarget.height * 4);
+      const depthBufferArray = new Float32Array(renderTarget.width * renderTarget.height * 4);
       renderer.readRenderTargetPixels(scope.planeRenderTarget, 0, 0, renderTarget.width, renderTarget.height, depthBufferArray);
 
       for (let i = 0; i < depthBufferArray.length; i+=4) {
@@ -93,7 +102,7 @@ class WorldInHandControls extends EventDispatcher {
         depthBufferArray[i] *= 255;
         depthBufferArray[i+1] = depthBufferArray[i];
         depthBufferArray[i+2] = depthBufferArray[i];
-        depthBufferArray[i+3] *= 255;
+        depthBufferArray[i+3] = 255;
       }
 
       let canvas2 = document.getElementById("copy") as HTMLCanvasElement;
@@ -114,7 +123,7 @@ class WorldInHandControls extends EventDispatcher {
         }
       }
 
-      (canvas2.getContext('2d') as CanvasRenderingContext2D).putImageData(imageData, 0, 0);*/
+      (canvas2.getContext('2d') as CanvasRenderingContext2D).putImageData(imageData, 0, 0);
 	  }
 
     function onMouseWheel(event: WheelEvent): void {
@@ -143,10 +152,12 @@ class WorldInHandControls extends EventDispatcher {
     function handleMouseWheel(event: WheelEvent): void {
       updateMouseParameters(event);
 
-      const zoomSpeed = cameraLookAt.clone().sub(camera.position).length();
+      const zoomSpeed = mouseWorldPosition.clone().sub(camera.position).length();
       zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
 
-      zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed * 0.25);
+      //console.log(zoomSpeed);
+
+      zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed * 0.5);
 
       scope.update();
     }
@@ -166,10 +177,24 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function zoom(amount: number): void {
+      //amount = Math.min(amount, 0.5);
       camera.position.addScaledVector(zoomDirection, amount);
 
-      // TODO: update cameralookAt
+      /*renderer.setRenderTarget(scope.planeRenderTarget);
+      renderer.render(scope.scene, camera);
 
+      const depthPixel = new Float32Array(4);
+      renderer.readRenderTargetPixels(scope.planeRenderTarget, width/2, height/2, 1, 1, depthPixel);
+
+      const linearDepth = -(camera.projectionMatrixInverse.elements[10] * depthPixel[0] + camera.projectionMatrixInverse.elements[14])
+                        / ((camera.projectionMatrixInverse.elements[11] * depthPixel[0] + camera.projectionMatrixInverse.elements[15]) * camera.far);
+
+
+      // TODO: update cameralookAt
+      //console.log(linearDepth);
+      cameraLookAt.copy(new Vector3(0.5, 0.5, linearDepth).unproject(camera));*/
+
+      camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
     }
 
@@ -206,12 +231,22 @@ class WorldInHandControls extends EventDispatcher {
       renderer.render(scope.scene, camera);
 
       const depthPixel = new Float32Array(4);
-      renderer.readRenderTargetPixels(scope.planeRenderTarget, mousePosition.x, mousePosition.y, 1, 1, depthPixel);
+      renderer.readRenderTargetPixels(scope.planeRenderTarget, x, h-y, 1, 1, depthPixel);
 
-      const linearDepth = -(camera.projectionMatrixInverse.elements[10] * depthPixel[0] + camera.projectionMatrixInverse.elements[14])
+      //console.log("DepthPixel", depthPixel[0])
+
+      let linearDepth = -(camera.projectionMatrixInverse.elements[10] * depthPixel[0] + camera.projectionMatrixInverse.elements[14])
                         / ((camera.projectionMatrixInverse.elements[11] * depthPixel[0] + camera.projectionMatrixInverse.elements[15]) * camera.far);
 
+      linearDepth = linearDepth * 2 - 1;
+      linearDepth = -linearDepth;               
+      console.log("Linear depth", linearDepth);
+
       mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth).unproject(camera);
+      //mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth).applyMatrix4(camera.projectionMatrixInverse).applyMatrix4(camera.matrixWorld);
+      console.log("Mouse position", mousePosition);
+      console.log("Mouse world position", mouseWorldPosition);
+      testSphere.position.copy(mouseWorldPosition);
     }
 
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );

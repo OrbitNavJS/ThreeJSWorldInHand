@@ -63,7 +63,7 @@ function init() {
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
     renderTarget = new WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight);
-    renderTarget.depthTexture = new DepthTexture(canvas.clientWidth, canvas.clientHeight, FloatType);
+    renderTarget.depthTexture = new DepthTexture(renderTarget.width, renderTarget.height, FloatType);
     renderTarget.depthTexture.format = DepthFormat
     scene = new Scene()
   }
@@ -150,13 +150,13 @@ function init() {
   // ===== 🎥 CAMERA =====
   {
     camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
-    camera.position.set(14,0, 4)
+    camera.position.set(14,5, 4)
     camera.lookAt(new Vector3(0, 0, 0))
   }
 
   // ===== 🕹️ CONTROLS =====
   {
-    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer)
+    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
     //cameraControls = new OrbitControls(camera, canvas);
 
     // Full screen
@@ -252,6 +252,8 @@ function animate() {
     camera.aspect = canvas.clientWidth / canvas.clientHeight
     camera.updateProjectionMatrix()
     renderTarget.setSize(canvas.clientWidth, canvas.clientHeight)
+    renderTarget.depthTexture.image.width = renderTarget.width
+    renderTarget.depthTexture.image.height = renderTarget.height
   }
 
   cameraControls.update()
