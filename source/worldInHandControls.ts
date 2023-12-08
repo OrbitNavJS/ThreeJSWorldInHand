@@ -72,11 +72,9 @@ class WorldInHandControls extends EventDispatcher {
 
     const testSphereGeometry = new SphereGeometry(0.25);
     const testSphereMaterial = new MeshBasicMaterial();
-    const testSphere = new Mesh(testSphereGeometry, testSphereMaterial);
+    const testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
 
-    scene.add(testSphere);
-
-    //let depthBufferArray = new Float32Array(0);
+    scene.add(testSphereMesh);
 
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
       planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
@@ -154,12 +152,10 @@ class WorldInHandControls extends EventDispatcher {
     function handleMouseWheel(event: WheelEvent): void {
       updateMouseParameters(event);
 
-      const zoomSpeed = mouseWorldPosition.clone().sub(camera.position).length();
+      const zoomSpeed = mouseWorldPosition.clone().sub(camera.position).length() * 0.25;
       zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
 
-      //console.log(zoomSpeed);
-
-      zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed * 0.5);
+      zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed);
 
       scope.update();
     }
@@ -180,39 +176,31 @@ class WorldInHandControls extends EventDispatcher {
 
     function zoom(amount: number): void {
       //amount = Math.min(amount, 0.5);
+
       camera.position.addScaledVector(zoomDirection, amount);
-
-      /*renderer.setRenderTarget(scope.planeRenderTarget);
-      renderer.render(scope.scene, camera);
-
-      const depthPixel = new Float32Array(4);
-      renderer.readRenderTargetPixels(scope.planeRenderTarget, width/2, height/2, 1, 1, depthPixel);
-
-      const linearDepth = -(camera.projectionMatrixInverse.elements[10] * depthPixel[0] + camera.projectionMatrixInverse.elements[14])
-                        / ((camera.projectionMatrixInverse.elements[11] * depthPixel[0] + camera.projectionMatrixInverse.elements[15]) * camera.far);
-
-
-      // TODO: update cameralookAt
-      //console.log(linearDepth);
-      cameraLookAt.copy(new Vector3(0.5, 0.5, linearDepth).unproject(camera));*/
-
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
+
+      const linearDepth = readDepthAtPosition(0, 0);
+      cameraLookAt.copy(new Vector3(0, 0, linearDepth).unproject(camera));
+      
+      const scalingFactor = -camera.position.y / (cameraLookAt.y - camera.position.y);
+      const intersectionXZ = camera.position.clone().add(cameraLookAt.clone().sub(camera.position).multiplyScalar(scalingFactor));
+      cameraLookAt.copy(intersectionXZ);
+
+      //testSphereMesh.position.copy(cameraLookAt);
     }
 
     function rotate(delta: Vector2): void {
-      const lookTo = camera.position.clone().sub(cameraLookAt);
+      const lookToInverse = camera.position.clone().sub(cameraLookAt);
+      camera.position.sub(lookToInverse);
 
-      camera.position.sub(lookTo);
-      lookTo.sub(cameraLookAt);
-
-      const screenX = new Vector3().crossVectors(lookTo, camera.up).normalize();
+      const screenX = new Vector3().crossVectors(lookToInverse, camera.up).normalize();
       const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
       rotationMatrix.multiply(new Matrix4().makeRotationAxis(screenX, delta.y));
 
-      lookTo.applyMatrix4(rotationMatrix);
-      lookTo.add(cameraLookAt);
-      camera.position.add(lookTo);
+      lookToInverse.applyMatrix4(rotationMatrix);
+      camera.position.add(lookToInverse);
       camera.lookAt(cameraLookAt);
 
       camera.updateProjectionMatrix();
@@ -229,33 +217,46 @@ class WorldInHandControls extends EventDispatcher {
       mousePosition.x = ( x / w ) * 2 - 1;
       mousePosition.y = 1 - ( y / h ) * 2;
 
+      const linearDepth = readDepthAtPosition(mousePosition.x, mousePosition.y);
+      mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth);
+      //console.log("Mouse ndc position", mouseWorldPosition);
+      mouseWorldPosition.unproject(camera);
+      //console.log("Mouse world position", mouseWorldPosition);
+
+      //testSphereMesh.position.copy(mouseWorldPosition);
+    }
+
+    /**
+     * @param x x position in NDC
+     * @param y y position in NDC
+     * @return NDC depth [-1, 1] at the specified coordinates
+     */
+    function readDepthAtPosition(x: number, y: number): number {
+      const rect = scope.domElement.getBoundingClientRect();
+      const w = window.devicePixelRatio * rect.width;
+      const h = window.devicePixelRatio * rect.height;
+
+      const xPixel = x * w/2 + w/2;
+      const yPixel = y * h/2 + h/2;
+
       renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
 
       const depthPixel = new Float32Array(4);
-      renderer.readRenderTargetPixels(scope.planeRenderTarget, x, h-y, 1, 1, depthPixel);
+      renderer.readRenderTargetPixels(scope.planeRenderTarget, xPixel, yPixel, 1, 1, depthPixel);
 
       let linearDepth = depthPixel[0];
-
       linearDepth = Math.min(1.0, linearDepth);
       linearDepth = Math.max(0.0, linearDepth);
-
-      console.log("Linear depth", linearDepth);
-                     
       linearDepth = linearDepth * 2 - 1;
 
-      mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth)
-      console.log("Mouse ndc position", mouseWorldPosition);
-      mouseWorldPosition.unproject(camera);
-      console.log("Mouse world position", mouseWorldPosition);
-
-      testSphere.position.copy(mouseWorldPosition);
+      return linearDepth;
     }
 
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );
 		scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
-    scope.domElement.addEventListener( 'mousedown', updateMouseParameters );
+    //scope.domElement.addEventListener('pointerdown', updateMouseParameters)
   }
 }
 
