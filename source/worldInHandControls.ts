@@ -70,7 +70,7 @@ class WorldInHandControls extends EventDispatcher {
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
 
-    const testSphereGeometry = new SphereGeometry(1);
+    const testSphereGeometry = new SphereGeometry(0.25);
     const testSphereMaterial = new MeshBasicMaterial();
     const testSphere = new Mesh(testSphereGeometry, testSphereMaterial);
 
@@ -88,11 +88,13 @@ class WorldInHandControls extends EventDispatcher {
       this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RGBAFormat, type: FloatType});
       
       // SHOW FRAMEBUFFER
-      renderer.setRenderTarget(scope.planeRenderTarget);
+      /*renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
 
-      const depthBufferArray = new Float32Array(renderTarget.width * renderTarget.height * 4);
-      renderer.readRenderTargetPixels(scope.planeRenderTarget, 0, 0, renderTarget.width, renderTarget.height, depthBufferArray);
+      let canvas = document.getElementById("scene") as HTMLCanvasElement;
+
+      const depthBufferArray = new Float32Array(canvas.width * canvas.height * 4);
+      renderer.readRenderTargetPixels(scope.planeRenderTarget, 0, 0, canvas.width, canvas.height, depthBufferArray);
 
       for (let i = 0; i < depthBufferArray.length; i+=4) {
         const linearDepth = (camera.projectionMatrixInverse.elements[10] * depthBufferArray[i] + camera.projectionMatrixInverse.elements[14])
@@ -106,16 +108,16 @@ class WorldInHandControls extends EventDispatcher {
       }
 
       let canvas2 = document.getElementById("copy") as HTMLCanvasElement;
-      canvas2.width = renderTarget.width;
-      canvas2.height = renderTarget.height;
-      let imageData = (canvas2.getContext('2d') as CanvasRenderingContext2D).createImageData(renderTarget.width, renderTarget.height)
+      canvas2.width = canvas.width;
+      canvas2.height = canvas.height;
+      let imageData = (canvas2.getContext('2d') as CanvasRenderingContext2D).createImageData(canvas.width, canvas.height)
       imageData.data.set(depthBufferArray); // copy here
       // invert y axis of image data
-      const bytesPerRow = renderTarget.width * 4;
-      const halfHeight = renderTarget.height / 2;
+      const bytesPerRow = canvas.width * 4;
+      const halfHeight = canvas.height / 2;
       for (let y = 0; y < halfHeight; ++y) {
         const topOffset = y * bytesPerRow;
-        const bottomOffset = (renderTarget.height - y - 1) * bytesPerRow;
+        const bottomOffset = (canvas.height - y - 1) * bytesPerRow;
         for (let i = 0; i < bytesPerRow; ++i) {
           const temp = imageData.data[topOffset + i];
           imageData.data[topOffset + i] = imageData.data[bottomOffset + i];
@@ -123,7 +125,7 @@ class WorldInHandControls extends EventDispatcher {
         }
       }
 
-      (canvas2.getContext('2d') as CanvasRenderingContext2D).putImageData(imageData, 0, 0);
+      (canvas2.getContext('2d') as CanvasRenderingContext2D).putImageData(imageData, 0, 0);*/
 	  }
 
     function onMouseWheel(event: WheelEvent): void {
@@ -219,13 +221,13 @@ class WorldInHandControls extends EventDispatcher {
 
     function updateMouseParameters(event: WheelEvent): void {
       const rect = scope.domElement.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      const w = rect.width;
-      const h = rect.height;
+      const x = window.devicePixelRatio * (event.clientX - rect.left);
+      const y = window.devicePixelRatio * (event.clientY - rect.top);
+      const w = window.devicePixelRatio * rect.width;
+      const h = window.devicePixelRatio * rect.height;
 
       mousePosition.x = ( x / w ) * 2 - 1;
-      mousePosition.y = - ( y / h ) * 2 + 1;
+      mousePosition.y = 1 - ( y / h ) * 2;
 
       renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
@@ -233,25 +235,27 @@ class WorldInHandControls extends EventDispatcher {
       const depthPixel = new Float32Array(4);
       renderer.readRenderTargetPixels(scope.planeRenderTarget, x, h-y, 1, 1, depthPixel);
 
-      //console.log("DepthPixel", depthPixel[0])
+      let linearDepth = depthPixel[0];
 
-      let linearDepth = -(camera.projectionMatrixInverse.elements[10] * depthPixel[0] + camera.projectionMatrixInverse.elements[14])
-                        / ((camera.projectionMatrixInverse.elements[11] * depthPixel[0] + camera.projectionMatrixInverse.elements[15]) * camera.far);
+      linearDepth = Math.min(1.0, linearDepth);
+      linearDepth = Math.max(0.0, linearDepth);
 
-      linearDepth = linearDepth * 2 - 1;
-      linearDepth = -linearDepth;               
       console.log("Linear depth", linearDepth);
+                     
+      linearDepth = linearDepth * 2 - 1;
 
-      mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth).unproject(camera);
-      //mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth).applyMatrix4(camera.projectionMatrixInverse).applyMatrix4(camera.matrixWorld);
-      console.log("Mouse position", mousePosition);
+      mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth)
+      console.log("Mouse ndc position", mouseWorldPosition);
+      mouseWorldPosition.unproject(camera);
       console.log("Mouse world position", mouseWorldPosition);
+
       testSphere.position.copy(mouseWorldPosition);
     }
 
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );
 		scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
+    scope.domElement.addEventListener( 'mousedown', updateMouseParameters );
   }
 }
 

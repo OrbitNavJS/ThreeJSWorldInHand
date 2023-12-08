@@ -58,11 +58,11 @@ function init() {
   {
     canvas = document.querySelector(`canvas#${CANVAS_ID}`)! as HTMLCanvasElement
     context = canvas.getContext('webgl2') as WebGL2RenderingContext
-    renderer = new WebGLRenderer({ canvas, context, antialias: true, alpha: true })
+    renderer = new WebGLRenderer({ canvas, context, antialias: true, alpha: true, logarithmicDepthBuffer: false })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
-    renderTarget = new WebGLRenderTarget(canvas.clientWidth, canvas.clientHeight);
+    renderTarget = new WebGLRenderTarget(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
     renderTarget.depthTexture = new DepthTexture(renderTarget.width, renderTarget.height, FloatType);
     renderTarget.depthTexture.format = DepthFormat
     scene = new Scene()
@@ -248,12 +248,10 @@ function animate() {
   }
 
   if (resizeRendererToDisplaySize(renderer)) {
-    const canvas = renderer.domElement
-    camera.aspect = canvas.clientWidth / canvas.clientHeight
-    camera.updateProjectionMatrix()
-    renderTarget.setSize(canvas.clientWidth, canvas.clientHeight)
-    renderTarget.depthTexture.image.width = renderTarget.width
-    renderTarget.depthTexture.image.height = renderTarget.height
+    const canvas = renderer.domElement;
+    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    camera.updateProjectionMatrix();
+    renderTarget.setSize(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
   }
 
   cameraControls.update()
