@@ -18,7 +18,9 @@ import {
   RGBAFormat, 
   Matrix4,
   SphereGeometry,
-  MeshBasicMaterial
+  MeshBasicMaterial,
+  Plane,
+  Ray
 } from 'three';
 import {cameraPosition} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 
@@ -65,26 +67,29 @@ class WorldInHandControls extends EventDispatcher {
     const rotateStart = new Vector2();
     const rotateEnd = new Vector2();
     const rotateDelta = new Vector2();
+    const panStart = new Vector3();
+    const panHeightGuide = new Plane();
 
     const planeGeometry = new PlaneGeometry(2, 2);
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
 
-    const testSphereGeometry = new SphereGeometry(0.25);
+    planeMaterial.vertexShader = vertexShader;
+    planeMaterial.fragmentShader = fragmentShader;
+    this.scene = new Scene();
+    this.scene.add(planeMesh);
+
+    this.planeRenderTarget = new WebGLRenderTarget(domElement.clientWidth, domElement.clientHeight, {format: RGBAFormat, type: FloatType});
+
+    /*const testSphereGeometry = new SphereGeometry(0.25);
     const testSphereMaterial = new MeshBasicMaterial();
     const testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
 
-    scene.add(testSphereMesh);
+    scene.add(testSphereMesh);*/
 
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
       planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
-      planeMaterial.vertexShader = vertexShader;
-      planeMaterial.fragmentShader = fragmentShader;
-      this.scene = new Scene();
-      this.scene.add(planeMesh);
-  
-      this.planeRenderTarget = new WebGLRenderTarget(domElement.width, domElement.height, {format: RGBAFormat, type: FloatType});
-      
+
       // SHOW FRAMEBUFFER
       /*renderer.setRenderTarget(scope.planeRenderTarget);
       renderer.render(scope.scene, camera);
@@ -134,14 +139,25 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function onPointerDown(event: PointerEvent): void {
-      if (event.button !== 0) return;
-      scope.domElement.addEventListener('pointermove', handleMouseMoveRotate);
       scope.domElement.addEventListener('pointerup', onPointerUp);
-
-      handleMouseDownRotate(event);
+      
+      switch (event.button) {
+        // left mouse
+        case 0:
+          handleMouseDownRotate(event);
+          scope.domElement.addEventListener('pointermove', handleMouseMoveRotate);
+          break;
+        
+        // right mouse
+        case 2:
+          handleMouseDownPan(event);
+          scope.domElement.addEventListener('pointermove', handleMouseMovePan);
+          break;
+      }
     }
 
     function onPointerUp( event: PointerEvent ) {
+      scope.domElement.removeEventListener('pointermove', handleMouseMovePan);
       scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate);
       scope.domElement.removeEventListener('pointerup', onPointerUp);
 
@@ -174,9 +190,25 @@ class WorldInHandControls extends EventDispatcher {
       scope.update();
     }
 
-    function zoom(amount: number): void {
-      //amount = Math.min(amount, 0.5);
+    function handleMouseDownPan(event: PointerEvent): void {
+      updateMouseParameters(event);
+      panStart.copy(mouseWorldPosition);
+      panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -panStart.y));
+    }
 
+    function handleMouseMovePan(event: PointerEvent): void {
+      updateMouseParameters(event);
+
+      const mouseRay = new Ray(camera.position, mouseWorldPosition.clone().sub(camera.position).normalize());
+      const panCurrent = new Vector3(); 
+      mouseRay.intersectPlane(panHeightGuide, panCurrent);
+
+      pan(panCurrent.clone().sub(panStart));
+
+      scope.update();
+    }
+
+    function zoom(amount: number): void {
       camera.position.addScaledVector(zoomDirection, amount);
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
@@ -185,10 +217,9 @@ class WorldInHandControls extends EventDispatcher {
       cameraLookAt.copy(new Vector3(0, 0, linearDepth).unproject(camera));
       
       const scalingFactor = -camera.position.y / (cameraLookAt.y - camera.position.y);
+      // Height of camera reference point should not change
       const intersectionXZ = camera.position.clone().add(cameraLookAt.clone().sub(camera.position).multiplyScalar(scalingFactor));
       cameraLookAt.copy(intersectionXZ);
-
-      //testSphereMesh.position.copy(cameraLookAt);
     }
 
     function rotate(delta: Vector2): void {
@@ -207,23 +238,31 @@ class WorldInHandControls extends EventDispatcher {
       camera.updateMatrixWorld();
     }
 
-    function updateMouseParameters(event: WheelEvent): void {
+    function pan(delta: Vector3): void {  
+      delta.negate();
+      delta.multiplyScalar(window.devicePixelRatio);
+
+      camera.position.add(delta);
+      cameraLookAt.add(delta);
+
+      camera.updateMatrixWorld();
+      camera.updateProjectionMatrix();
+    }
+
+    function updateMouseParameters(event: WheelEvent | PointerEvent): void {
       const rect = scope.domElement.getBoundingClientRect();
-      const x = window.devicePixelRatio * (event.clientX - rect.left);
-      const y = window.devicePixelRatio * (event.clientY - rect.top);
-      const w = window.devicePixelRatio * rect.width;
-      const h = window.devicePixelRatio * rect.height;
+
+      const x = (event.clientX - rect.left);
+      const y = (event.clientY - rect.top);
+      const w = rect.width;
+      const h = rect.height;
 
       mousePosition.x = ( x / w ) * 2 - 1;
       mousePosition.y = 1 - ( y / h ) * 2;
 
       const linearDepth = readDepthAtPosition(mousePosition.x, mousePosition.y);
       mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth);
-      //console.log("Mouse ndc position", mouseWorldPosition);
       mouseWorldPosition.unproject(camera);
-      //console.log("Mouse world position", mouseWorldPosition);
-
-      //testSphereMesh.position.copy(mouseWorldPosition);
     }
 
     /**
@@ -233,8 +272,9 @@ class WorldInHandControls extends EventDispatcher {
      */
     function readDepthAtPosition(x: number, y: number): number {
       const rect = scope.domElement.getBoundingClientRect();
-      const w = window.devicePixelRatio * rect.width;
-      const h = window.devicePixelRatio * rect.height;
+
+      const w = rect.width;
+      const h = rect.height;
 
       const xPixel = x * w/2 + w/2;
       const yPixel = y * h/2 + h/2;
@@ -256,7 +296,8 @@ class WorldInHandControls extends EventDispatcher {
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );
 		scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
-    //scope.domElement.addEventListener('pointerdown', updateMouseParameters)
+    // prevent context menu when right clicking
+    scope.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); });
   }
 }
 
