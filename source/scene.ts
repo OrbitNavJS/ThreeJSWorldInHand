@@ -19,11 +19,10 @@ import {
 } from 'three'
 import { WorldInHandControls } from './worldInHandControls'
 import Stats from 'three/examples/jsm/libs/stats.module'
-import * as animations from './helpers/animations'
 import { toggleFullScreen } from './helpers/fullscreen'
 import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
-import { OrbitControls } from './orbitControls'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 
@@ -39,13 +38,12 @@ let ambientLight: AmbientLight
 let directionalLight: DirectionalLight
 let directionalLightHelper: DirectionalLightHelper
 let camera: PerspectiveCamera
-let cameraControls: WorldInHandControls
+let cameraControls: WorldInHandControls | OrbitControls
 let axesHelper: AxesHelper
 let clock: Clock
 let stats: Stats
 let gui: GUI
 
-const animation = { enabled: false, play: true }
 
 init()
 animate()
@@ -121,7 +119,7 @@ function init() {
 
   // ===== 🕹️ CONTROLS =====
   {
-    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+    //cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
     //cameraControls = new OrbitControls(camera, canvas);
 
     // Full screen
@@ -153,6 +151,17 @@ function init() {
   // ==== 🐞 DEBUG GUI ====
   {
     gui = new GUI({ title: '🐞 Debug GUI', width: 300 })
+
+    const navigationFolder = gui.addFolder('Navigation')
+    const navigationModes = ['world-in-hand', 'orbit']
+    const navigationMode = { current: null }
+    navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value) => {
+      if (value === 'world-in-hand') {
+        cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+      } else if (value === 'orbit') {
+        cameraControls = new OrbitControls(camera, canvas);
+      }
+    })
 
     const lightsFolder = gui.addFolder('Lights')
     lightsFolder.add(ambientLight, 'visible').name('ambient light')
