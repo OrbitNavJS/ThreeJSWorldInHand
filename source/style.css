@@ -17,7 +17,8 @@
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 body,
@@ -26,10 +27,9 @@ html {
 }
 
 canvas {
-  height: 100%;
+  height: calc(100% - 56px);
   width: 100%;
   outline: none;
-
   background: rgb(34, 193, 195);
   background: linear-gradient(
     0deg,
@@ -40,7 +40,23 @@ canvas {
   );
 }
 
+footer {
+  margin-top: auto;
+  padding: 0 25px;
+  height: 56px;
+  background: rgba(35, 42, 47, 0.885);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+}
+
+a {
+  color: #c5bcbc;
+  font-weight: bold;
+  text-decoration: none;
 }
