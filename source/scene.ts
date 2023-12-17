@@ -157,8 +157,10 @@ function init() {
     const navigationMode = { current: null }
     navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value) => {
       if (value === 'world-in-hand') {
+        if (cameraControls !== undefined) cameraControls.dispose();
         cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
       } else if (value === 'orbit') {
+        if (cameraControls !== undefined) cameraControls.dispose();
         cameraControls = new OrbitControls(camera, canvas);
       }
     })
