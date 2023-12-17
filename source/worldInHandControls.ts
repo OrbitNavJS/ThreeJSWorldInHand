@@ -96,7 +96,7 @@ class WorldInHandControls extends EventDispatcher {
       scope.domElement.removeEventListener( 'pointerdown', onPointerDown );
       scope.domElement.removeEventListener( 'pointercancel', onPointerUp );
       scope.domElement.removeEventListener( 'wheel', onMouseWheel );
-      scope.domElement.removeEventListener( 'contextmenu', function ( event ) { event.preventDefault(); });
+      scope.domElement.removeEventListener( 'contextmenu', preventContextMenu);
     }
 
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
@@ -303,11 +303,15 @@ class WorldInHandControls extends EventDispatcher {
       return linearDepth;
     }
 
+    function preventContextMenu(event: Event) {
+      event.preventDefault();
+    }
+
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );
     scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
     // prevent context menu when right clicking
-    scope.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); });
+    scope.domElement.addEventListener( 'contextmenu', preventContextMenu);
   }
 }
 
