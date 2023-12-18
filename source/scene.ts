@@ -116,7 +116,7 @@ function init() {
 
   // ===== 🕹️ CONTROLS =====
   {
-    //cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
     //cameraControls = new OrbitControls(camera, canvas);
 
     // Full screen
