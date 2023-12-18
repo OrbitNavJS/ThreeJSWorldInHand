@@ -1,28 +1,20 @@
 import {
-  RedFormat,
   EventDispatcher,
   FloatType,
   Mesh,
   PerspectiveCamera,
   PlaneGeometry,
-  OrthographicCamera,
   Scene,
   ShaderMaterial,
-  TypedArray,
-  UnsignedByteType,
-  UnsignedIntType,
   Vector2,
   Vector3,
   WebGLRenderTarget,
   WebGLRenderer, 
   RGBAFormat, 
   Matrix4,
-  SphereGeometry,
-  MeshBasicMaterial,
   Plane,
   Ray
 } from 'three';
-import {cameraPosition} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 
 const _startEvent = {type: 'start'}
 const _endEvent = {type: 'end'}
@@ -50,16 +42,18 @@ class WorldInHandControls extends EventDispatcher {
   protected camera: PerspectiveCamera // | OrthographicCamera
   protected scene: Scene
   protected planeRenderTarget: WebGLRenderTarget
-  protected planeMaterial: ShaderMaterial
 
   public update: Function
+  public dispose: Function
 
   constructor (camera: PerspectiveCamera /* | OrthographicCamera */, domElement: HTMLCanvasElement, renderTarget: WebGLRenderTarget, renderer: WebGLRenderer, scene: Scene){
 	  super();
     const scope = this;
     this.camera = camera;
     this.domElement = domElement;
-    
+
+    this.camera.lookAt(0, 0, 0);
+
     const mousePosition = new Vector2();
     const mouseWorldPosition = new Vector3();
     const zoomDirection = new Vector3();
@@ -86,6 +80,16 @@ class WorldInHandControls extends EventDispatcher {
     const testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
 
     scene.add(testSphereMesh);*/
+
+    this.dispose = () => {
+      scope.domElement.removeEventListener('pointermove', handleMouseMovePan);
+      scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate);
+      scope.domElement.removeEventListener('pointerup', onPointerUp);
+      scope.domElement.removeEventListener( 'pointerdown', onPointerDown );
+      scope.domElement.removeEventListener( 'pointercancel', onPointerUp );
+      scope.domElement.removeEventListener( 'wheel', onMouseWheel );
+      scope.domElement.removeEventListener( 'contextmenu', preventContextMenu);
+    }
 
     this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
       planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
@@ -133,8 +137,10 @@ class WorldInHandControls extends EventDispatcher {
 
     function onMouseWheel(event: WheelEvent): void {
       event.preventDefault();
+      // @ts-ignore
       scope.dispatchEvent( _startEvent );
       handleMouseWheel( event );
+      // @ts-ignore
       scope.dispatchEvent( _endEvent );
     }
 
@@ -160,8 +166,6 @@ class WorldInHandControls extends EventDispatcher {
       scope.domElement.removeEventListener('pointermove', handleMouseMovePan);
       scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate);
       scope.domElement.removeEventListener('pointerup', onPointerUp);
-
-      scope.dispatchEvent( _endEvent );
     }
 
 
@@ -293,11 +297,15 @@ class WorldInHandControls extends EventDispatcher {
       return linearDepth;
     }
 
+    function preventContextMenu(event: Event) {
+      event.preventDefault();
+    }
+
     scope.domElement.addEventListener( 'pointerdown', onPointerDown );
-		scope.domElement.addEventListener( 'pointercancel', onPointerUp );
+    scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
     // prevent context menu when right clicking
-    scope.domElement.addEventListener( 'contextmenu', function ( event ) { event.preventDefault(); });
+    scope.domElement.addEventListener( 'contextmenu', preventContextMenu);
   }
 }
 

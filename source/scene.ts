@@ -2,34 +2,27 @@ import GUI from 'lil-gui'
 import {
   AmbientLight,
   AxesHelper,
-  BoxGeometry,
-  Clock,
-  Color,
   DepthFormat,
   DepthTexture,
-  GridHelper,
-  Group,
+  DirectionalLightHelper,
   LoadingManager,
-  Mesh,
-  MeshLambertMaterial,
-  MeshStandardMaterial,
   PCFSoftShadowMap,
   PerspectiveCamera,
-  PlaneGeometry,
   Scene,
-  UnsignedIntType,
   FloatType,
   Vector3,
   WebGLRenderTarget,
-  WebGLRenderer
+  WebGLRenderer,
+  DirectionalLight
 } from 'three'
 import { WorldInHandControls } from './worldInHandControls'
 import Stats from 'three/examples/jsm/libs/stats.module'
-import * as animations from './helpers/animations'
 import { toggleFullScreen } from './helpers/fullscreen'
 import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
-import { OrbitControls } from './orbitControls'
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
+
 
 const CANVAS_ID = 'scene'
 
@@ -40,15 +33,14 @@ let renderTarget: WebGLRenderTarget
 let scene: Scene
 let loadingManager: LoadingManager
 let ambientLight: AmbientLight
-let cubeGroup: Group
+let directionalLight: DirectionalLight
+let directionalLightHelper: DirectionalLightHelper
 let camera: PerspectiveCamera
-let cameraControls: WorldInHandControls
+let cameraControls: WorldInHandControls | OrbitControls
 let axesHelper: AxesHelper
-let clock: Clock
 let stats: Stats
 let gui: GUI
 
-const animation = { enabled: false, play: true }
 
 init()
 animate()
@@ -89,62 +81,30 @@ function init() {
 
   // ===== 💡 LIGHTS =====
   {
-    ambientLight = new AmbientLight('white', 5)
+    ambientLight = new AmbientLight(0xffffff, 1.5)
     scene.add(ambientLight)
+
+    // add directional light
+    directionalLight = new DirectionalLight(0xf5f5f5, 1)
+    directionalLight.position.set(0, 10, 0)
+    scene.add(directionalLight)
   }
 
   // ===== 📦 OBJECTS =====
   {
-    // plane
-    const planeGeometry = new PlaneGeometry(15, 15)
-    const planeMaterial = new MeshLambertMaterial({
-      color: 'gray',
-      emissive: 'white',
-      emissiveIntensity: 0.2,
-      side: 2,
-      transparent: true,
-      opacity: 0.4,
-    })
-    const plane = new Mesh(planeGeometry, planeMaterial)
-    plane.rotateX(Math.PI / 2)
-    plane.position.y = -0.001
-    plane.receiveShadow = true
-    scene.add(plane)
+    // load city model
+    const loader = new GLTFLoader();
 
-    // cubes
-    const gridSize = 10;
-    const spacing = 1.2;
-    const gridCenterOffset = (gridSize - 1) * spacing * 0.5;
+    loader.load( 'models/scene.gltf', function ( gltf: GLTF ) {
+      let model = gltf.scene;
+      model.scale.set(10, 10, 10);
+      model.rotation.set(0, 1, 0);
+      model.position.set(10, 0, -6);
+      scene.add( model );
 
-    const sideLength = 1;
-    const minHeight = 0.2;
-    const maxHeight = 2.0;
-
-    cubeGroup = new Group();
-    const cubeGeometry = new BoxGeometry(sideLength, sideLength, sideLength);
-
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
-        
-        const randomHeight = Math.random() * (maxHeight - minHeight) + minHeight;
-        const randomColor = new Color('#ff66a1').lerp(new Color('#ffffff'), Math.random());
-
-        const cubeMaterial = new MeshStandardMaterial({
-          color: randomColor,
-          metalness: 0.5,
-          roughness: 0.7,
-        });
-
-        const tmpCube = new Mesh(cubeGeometry, cubeMaterial);
-        tmpCube.castShadow = true;
-
-        tmpCube.position.set(i * spacing - gridCenterOffset, randomHeight / 2, j * spacing - gridCenterOffset);
-        tmpCube.scale.set(1, randomHeight, 1);
-
-        cubeGroup.add(tmpCube);
-      }
-    }
-  scene.add(cubeGroup);
+    }, undefined, function ( error: unknown ) {
+      console.error( error );
+    });
   }
 
   // ===== 🎥 CAMERA =====
@@ -173,14 +133,13 @@ function init() {
     axesHelper.visible = false
     scene.add(axesHelper)
 
-    const gridHelper = new GridHelper(15, 15, 'teal', 'darkgray')
-    gridHelper.position.y = -0.01
-    scene.add(gridHelper)
+    directionalLightHelper = new DirectionalLightHelper(directionalLight, 5);
+    directionalLightHelper.visible = false
+    scene.add(directionalLightHelper)
   }
 
   // ===== 📈 STATS & CLOCK =====
   {
-    clock = new Clock()
     stats = new Stats()
     document.body.appendChild(stats.dom)
   }
@@ -189,32 +148,25 @@ function init() {
   {
     gui = new GUI({ title: '🐞 Debug GUI', width: 300 })
 
-    const cubesFolder = gui.addFolder('Cubes')
+    const navigationFolder = gui.addFolder('Navigation')
+    const navigationModes = ['world-in-hand', 'orbit']
+    const navigationMode = { current: null }
+    navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
+      if (value === 'world-in-hand') {
+        if (cameraControls !== undefined) cameraControls.dispose();
+        cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+      } else if (value === 'orbit') {
+        if (cameraControls !== undefined) cameraControls.dispose();
+        cameraControls = new OrbitControls(camera, canvas);
+      }
+    })
 
-    cubesFolder.add(cubeGroup.position, 'x').min(-10).max(10).step(0.1).name('pos x')
-    cubesFolder.add(cubeGroup.position, 'y').min(-10).max(10).step(0.1).name('pos y')
-    cubesFolder.add(cubeGroup.position, 'z').min(-10).max(10).step(0.1).name('pos z')
-
-    cubesFolder.add(cubeGroup.rotation, 'x', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate x')
-    cubesFolder.add(cubeGroup.rotation, 'y', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate y')
-    cubesFolder.add(cubeGroup.rotation, 'z', -Math.PI * 2, Math.PI * 2, Math.PI / 4).name('rotate z')
-    
-    cubesFolder.addColor({ color: '#ff66a1' }, 'color').onChange((color: Color) => {
-      cubeGroup.children.forEach((cube: Mesh) => {
-        (cube.material as MeshStandardMaterial).color = new Color(color).lerp(new Color('#ffffff'), Math.random())
-      })
-    });
-
-    cubesFolder.add(animation, 'enabled').name('animated')
-    
     const lightsFolder = gui.addFolder('Lights')
     lightsFolder.add(ambientLight, 'visible').name('ambient light')
+    lightsFolder.add(directionalLight, 'visible').name('directional light')
 
     const helpersFolder = gui.addFolder('Helpers')
     helpersFolder.add(axesHelper, 'visible').name('axes')
-
-    /*const cameraFolder = gui.addFolder('Camera')
-    cameraFolder.add(cameraControls, 'autoRotate')*/
 
     // persist GUI state in local storage on changes
     gui.onFinishChange(() => {
@@ -241,11 +193,6 @@ function animate() {
   requestAnimationFrame(animate)
 
   stats.update()
-
-  if (animation.enabled && animation.play) {
-    animations.rotate(cubeGroup, clock, Math.PI / 3)
-    animations.bounce(cubeGroup, clock, 1, 0.5, 0.5)
-  }
 
   if (resizeRendererToDisplaySize(renderer)) {
     const canvas = renderer.domElement;
