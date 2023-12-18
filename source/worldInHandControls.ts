@@ -1,28 +1,20 @@
 import {
-  RedFormat,
   EventDispatcher,
   FloatType,
   Mesh,
   PerspectiveCamera,
   PlaneGeometry,
-  OrthographicCamera,
   Scene,
   ShaderMaterial,
-  TypedArray,
-  UnsignedByteType,
-  UnsignedIntType,
   Vector2,
   Vector3,
   WebGLRenderTarget,
   WebGLRenderer, 
   RGBAFormat, 
   Matrix4,
-  SphereGeometry,
-  MeshBasicMaterial,
   Plane,
   Ray
 } from 'three';
-import {cameraPosition} from "three/examples/jsm/nodes/shadernode/ShaderNodeBaseElements";
 
 const _startEvent = {type: 'start'}
 const _endEvent = {type: 'end'}
@@ -145,8 +137,10 @@ class WorldInHandControls extends EventDispatcher {
 
     function onMouseWheel(event: WheelEvent): void {
       event.preventDefault();
+      // @ts-ignore
       scope.dispatchEvent( _startEvent );
       handleMouseWheel( event );
+      // @ts-ignore
       scope.dispatchEvent( _endEvent );
     }
 
