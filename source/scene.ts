@@ -6,7 +6,6 @@ import {
   DepthFormat,
   DepthTexture,
   DirectionalLightHelper,
-  Group,
   LoadingManager,
   PCFSoftShadowMap,
   PerspectiveCamera,
@@ -23,7 +22,7 @@ import { toggleFullScreen } from './helpers/fullscreen'
 import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 
 const CANVAS_ID = 'scene'
@@ -40,7 +39,6 @@ let directionalLightHelper: DirectionalLightHelper
 let camera: PerspectiveCamera
 let cameraControls: WorldInHandControls | OrbitControls
 let axesHelper: AxesHelper
-let clock: Clock
 let stats: Stats
 let gui: GUI
 
@@ -98,14 +96,14 @@ function init() {
     // load city model
     const loader = new GLTFLoader();
 
-    loader.load( 'assets/models/scene.gltf', function ( gltf ) {
+    loader.load( 'assets/models/scene.gltf', function ( gltf: GLTF ) {
       let model = gltf.scene;
       model.scale.set(10, 10, 10);
       model.rotation.set(0, 1, 0);
       model.position.set(10, 0, -6);
       scene.add( model );
 
-    }, undefined, function ( error ) {
+    }, undefined, function ( error: Error ) {
       console.error( error );
     });
   }
@@ -143,7 +141,6 @@ function init() {
 
   // ===== 📈 STATS & CLOCK =====
   {
-    clock = new Clock()
     stats = new Stats()
     document.body.appendChild(stats.dom)
   }
@@ -155,7 +152,7 @@ function init() {
     const navigationFolder = gui.addFolder('Navigation')
     const navigationModes = ['world-in-hand', 'orbit']
     const navigationMode = { current: null }
-    navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value) => {
+    navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange(() => {
       if (value === 'world-in-hand') {
         if (cameraControls !== undefined) cameraControls.dispose();
         cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
