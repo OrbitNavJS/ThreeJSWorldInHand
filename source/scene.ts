@@ -95,7 +95,7 @@ function init() {
     // load city model
     const loader = new GLTFLoader();
 
-    loader.load( 'public/models/scene.gltf', function ( gltf: GLTF ) {
+    loader.load( '/models/scene.gltf', function ( gltf: GLTF ) {
       let model = gltf.scene;
       model.scale.set(10, 10, 10);
       model.rotation.set(0, 1, 0);
