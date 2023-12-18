@@ -2,7 +2,6 @@ import GUI from 'lil-gui'
 import {
   AmbientLight,
   AxesHelper,
-  Clock,
   DepthFormat,
   DepthTexture,
   DirectionalLightHelper,
@@ -103,7 +102,7 @@ function init() {
       model.position.set(10, 0, -6);
       scene.add( model );
 
-    }, undefined, function ( error: Error ) {
+    }, undefined, function ( error: unknown ) {
       console.error( error );
     });
   }
@@ -152,7 +151,7 @@ function init() {
     const navigationFolder = gui.addFolder('Navigation')
     const navigationModes = ['world-in-hand', 'orbit']
     const navigationMode = { current: null }
-    navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange(() => {
+    navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
       if (value === 'world-in-hand') {
         if (cameraControls !== undefined) cameraControls.dispose();
         cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
