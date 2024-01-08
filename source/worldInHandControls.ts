@@ -172,10 +172,27 @@ class WorldInHandControls extends EventDispatcher {
     function handleMouseWheel(event: WheelEvent): void {
       updateMouseParameters(event);
 
-      const zoomSpeed = mouseWorldPosition.clone().sub(camera.position).length() * 0.25;
-      zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
+      /*const zoomSpeed = mouseWorldPosition.clone().sub(camera.position).length() * 0.25;
+      zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();*/
 
-      zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed);
+      zoomDirection.copy(mouseWorldPosition).sub(camera.position);
+      const directionLength = zoomDirection.length();
+
+      /*
+      const zoomDirectionScreenSpace = zoomDirection.clone().project(camera);
+      console.log(zoomDirectionScreenSpace.z);
+      zoomDirectionScreenSpace.multiplyScalar(-((zoomDirectionScreenSpace.length()) ** 2) + 1);
+      const directionLength = zoomDirectionScreenSpace.unproject(camera).length() / 10;*/
+
+      zoomDirection.normalize();
+      //zoomDirection.copy(mouseWorldPosition).sub(camera.position).multiplyScalar(0.25);
+
+      //zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed);
+      console.log("dir", directionLength)
+      //zoom(-(event.deltaY / Math.abs(event.deltaY)) * directionLength);
+      zoom(-(event.deltaY / Math.abs(event.deltaY)) * (directionLength*0.2+0.25));
+      //zoom(-(event.deltaY / Math.abs(event.deltaY)) * 0.5);
+      //zoom(-(event.deltaY / Math.abs(event.deltaY)) * (0.09*directionLength**2 + 0.33* Math.log(directionLength+1)));
 
       scope.update();
     }
@@ -213,6 +230,8 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function zoom(amount: number): void {
+      console.log("amount", amount)
+
       camera.position.addScaledVector(zoomDirection, amount);
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
