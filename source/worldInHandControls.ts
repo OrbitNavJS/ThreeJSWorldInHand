@@ -13,9 +13,7 @@ import {
   RGBAFormat, 
   Matrix4,
   Plane,
-  Ray,
-  SphereGeometry,
-  MeshBasicMaterial
+  Ray
 } from 'three';
 
 const _startEvent = {type: 'start'}

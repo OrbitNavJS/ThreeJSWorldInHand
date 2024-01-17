@@ -20,7 +20,7 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { toggleFullScreen } from './helpers/fullscreen'
 import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
-import { OrbitControls } from './orbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 
