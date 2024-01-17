@@ -13,7 +13,9 @@ import {
   RGBAFormat, 
   Matrix4,
   Plane,
-  Ray
+  Ray,
+  SphereGeometry,
+  MeshBasicMaterial
 } from 'three';
 
 const _startEvent = {type: 'start'}
@@ -51,12 +53,18 @@ class WorldInHandControls extends EventDispatcher {
     const scope = this;
     this.camera = camera;
     this.domElement = domElement;
+    this.domElement.style.touchAction = 'none'; // disable touch scroll
 
     this.camera.lookAt(0, 0, 0);
+
+    // Cannot be const because splice wouldn't shrink array size
+    let pointers: Array<PointerEvent> = [];
+    let previousPointers: Array<PointerEvent> = [];
 
     const mousePosition = new Vector2();
     const mouseWorldPosition = new Vector3();
     const zoomDirection = new Vector3();
+    //let previous
     const cameraLookAt = new Vector3();
     const rotateStart = new Vector2();
     const rotateEnd = new Vector2();
@@ -75,15 +83,15 @@ class WorldInHandControls extends EventDispatcher {
 
     this.planeRenderTarget = new WebGLRenderTarget(domElement.clientWidth, domElement.clientHeight, {format: RGBAFormat, type: FloatType});
 
-    /*const testSphereGeometry = new SphereGeometry(0.25);
-    const testSphereMaterial = new MeshBasicMaterial();
-    const testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
+    //const testSphereGeometry = new SphereGeometry(0.25);
+    //const testSphereMaterial = new MeshBasicMaterial();
+    //const testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
 
-    scene.add(testSphereMesh);*/
+    //scene.add(testSphereMesh);
 
     this.dispose = () => {
-      scope.domElement.removeEventListener('pointermove', handleMouseMovePan);
-      scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate);
+      scope.domElement.removeEventListener('pointermove', handlePointerMovePan);
+      scope.domElement.removeEventListener('pointermove', handlePointerMoveRotate);
       scope.domElement.removeEventListener('pointerup', onPointerUp);
       scope.domElement.removeEventListener( 'pointerdown', onPointerDown );
       scope.domElement.removeEventListener( 'pointercancel', onPointerUp );
@@ -145,47 +153,76 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function onPointerDown(event: PointerEvent): void {
+      console.log("pointers:", pointers.length)
+      console.log("previous:", previousPointers.length)
+
+      scope.domElement.removeEventListener('pointermove', handlePointerMovePan);
+      scope.domElement.removeEventListener('pointermove', handlePointerMoveRotate);
+      scope.domElement.removeEventListener('pointermove', handleTouchMoveZoomRotate);
+
       scope.domElement.addEventListener('pointerup', onPointerUp);
-      
-      switch (event.button) {
-        // left mouse
-        case 0:
-          handleMouseDownRotate(event);
-          scope.domElement.addEventListener('pointermove', handleMouseMoveRotate);
-          break;
-        
-        // right mouse
-        case 2:
-          handleMouseDownPan(event);
-          scope.domElement.addEventListener('pointermove', handleMouseMovePan);
-          break;
+      scope.domElement.setPointerCapture(event.pointerId);
+
+      if ( event.pointerType === 'touch' ) {
+        trackPointer(event);
+
+        switch (pointers.length) {
+          case 1:
+            handlePointerDownPan(event);
+            scope.domElement.addEventListener('pointermove', handlePointerMovePan);
+            break;
+          case 2:
+            handlePointerDownRotate(event);
+            // no special handling for touch down zoom required
+            scope.domElement.addEventListener('pointermove', handleTouchMoveZoomRotate);
+            break;
+        }
+      } else { 
+        switch (event.button) {
+          // left mouse
+          case 0:
+            handlePointerDownRotate(event);
+            scope.domElement.addEventListener('pointermove', handlePointerMoveRotate);
+            break;
+          
+          // right mouse
+          case 2:
+            handlePointerDownPan(event);
+            scope.domElement.addEventListener('pointermove', handlePointerMovePan);
+            break;
+        }
       }
     }
 
     function onPointerUp( event: PointerEvent ) {
-      scope.domElement.removeEventListener('pointermove', handleMouseMovePan);
-      scope.domElement.removeEventListener('pointermove', handleMouseMoveRotate);
-      scope.domElement.removeEventListener('pointerup', onPointerUp);
-    }
+      if (event.pointerType === 'touch') removePointer( event );
 
+      scope.domElement.releasePointerCapture( event.pointerId );
+      scope.domElement.removeEventListener('pointermove', handlePointerMovePan);
+      scope.domElement.removeEventListener('pointermove', handlePointerMoveRotate);
+      scope.domElement.removeEventListener('pointermove', handleTouchMoveZoomRotate);
+
+      // always true for mouse events
+      if (pointers.length === 0) scope.domElement.removeEventListener('pointerup', onPointerUp);
+      // call onPointerDown to enable panning when removing only one finger
+      else onPointerDown(pointers[0]);
+    }
+    
 
     function handleMouseWheel(event: WheelEvent): void {
-      updateMouseParameters(event);
+      updateMouseParameters(event.clientX, event.clientY);
 
-      const zoomSpeed = mouseWorldPosition.clone().sub(camera.position).length() * 0.25;
-      zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
-
-      zoom(-(event.deltaY / Math.abs(event.deltaY)) * zoomSpeed);
+      zoom(-(event.deltaY / Math.abs(event.deltaY)));
 
       scope.update();
     }
 
-    function handleMouseDownRotate(event: PointerEvent): void {
-      rotateStart.set(event.clientX, event.clientY);
-    }
+    function handlePointerDownRotate(event: PointerEvent): void {
+      rotateStart.copy(getAveragePointerPosition(event));
+  	}
 
-    function handleMouseMoveRotate(event: PointerEvent): void {
-      rotateEnd.set( event.clientX, event.clientY );
+    function handlePointerMoveRotate(event: PointerEvent): void {
+      rotateEnd.copy(getAveragePointerPosition(event));
       rotateDelta.subVectors( rotateEnd, rotateStart ).multiplyScalar( 0.005 );
 
       rotate(rotateDelta);
@@ -194,14 +231,15 @@ class WorldInHandControls extends EventDispatcher {
       scope.update();
     }
 
-    function handleMouseDownPan(event: PointerEvent): void {
-      updateMouseParameters(event);
+    function handlePointerDownPan(event: PointerEvent): void {
+      updateMouseParameters(event.clientX, event.clientY);
+
       panStart.copy(mouseWorldPosition);
       panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -panStart.y));
     }
 
-    function handleMouseMovePan(event: PointerEvent): void {
-      updateMouseParameters(event);
+    function handlePointerMovePan(event: PointerEvent): void {
+      updateMouseParameters(event.clientX, event.clientY);
 
       const mouseRay = new Ray(camera.position, mouseWorldPosition.clone().sub(camera.position).normalize());
       const panCurrent = new Vector3(); 
@@ -212,7 +250,29 @@ class WorldInHandControls extends EventDispatcher {
       scope.update();
     }
 
+    function handleTouchMoveZoomRotate(event: PointerEvent) {
+      trackPointer(event);
+
+      handlePointerMoveRotate(event);
+      handleTouchMoveZoom(event);
+    }
+
+    function handleTouchMoveZoom(event: PointerEvent) {
+      const otherPointer = getOtherPointer(event);
+
+      const averageX = (event.clientX + otherPointer.clientX) / 2;
+      const averageY = (event.clientY + otherPointer.clientY) / 2;
+      updateMouseParameters(averageX, averageY);
+
+      const currLength = new Vector2(event.clientX - otherPointer.clientX, event.clientY - otherPointer.clientY).length();
+      const prevLength = new Vector2(previousPointers[0].clientX - previousPointers[1].clientX, previousPointers[0].clientY - previousPointers[1].clientY).length();
+      const delta = (currLength - prevLength);
+ 
+      zoom(delta * 0.01);
+    }
+
     function zoom(amount: number): void {
+      zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
       camera.position.addScaledVector(zoomDirection, amount);
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
@@ -244,7 +304,6 @@ class WorldInHandControls extends EventDispatcher {
 
     function pan(delta: Vector3): void {  
       delta.negate();
-      delta.multiplyScalar(window.devicePixelRatio);
 
       camera.position.add(delta);
       cameraLookAt.add(delta);
@@ -253,11 +312,52 @@ class WorldInHandControls extends EventDispatcher {
       camera.updateProjectionMatrix();
     }
 
-    function updateMouseParameters(event: WheelEvent | PointerEvent): void {
-      const rect = scope.domElement.getBoundingClientRect();
+    /**
+     * Tracks up to two pointers. Expressly ignores any additional pointers.
+     * @param event The event to possibly track.
+     */
+    function trackPointer(event: PointerEvent): void {
+      if (pointers.length === 0) {
+        pointers.push(event);
+        previousPointers.push(event);
+        return;
+      } else if (pointers.length === 1 && pointers[0].pointerId !== event.pointerId) {
+        pointers.push(event);
+        previousPointers.push(event);
+        return;
+      }
 
-      const x = (event.clientX - rect.left);
-      const y = (event.clientY - rect.top);
+      let index = 2;
+      if (pointers[0].pointerId === event.pointerId) index = 0;
+      else if (pointers[1].pointerId === event.pointerId) index = 1;
+      else return;
+
+      previousPointers[index] = pointers[index];
+      pointers[index] = event;
+    }
+
+    function removePointer(event: PointerEvent): void {
+      if (pointers.length === 0) return;
+      else if (pointers.length === 1) {
+        pointers.splice(0, 1);
+        previousPointers.splice(0, 1);
+        return;
+      }
+
+      let index = 2;
+      if (pointers[0].pointerId === event.pointerId) index = 0;
+      else if (pointers[1].pointerId === event.pointerId) index = 1;
+      else return;
+
+      pointers.splice(index, 1);
+      previousPointers.splice(index, 1);
+    }
+
+    function updateMouseParameters(eventX: number, eventY: number): void {
+      const rect = scope.domElement.getBoundingClientRect();
+      
+      const x = (eventX - rect.left);
+      const y = (eventY - rect.top);
       const w = rect.width;
       const h = rect.height;
 
@@ -297,11 +397,30 @@ class WorldInHandControls extends EventDispatcher {
       return linearDepth;
     }
 
+    function getOtherPointer(event: PointerEvent): PointerEvent {
+      return (pointers[0].pointerId === event.pointerId) ? pointers[1] : pointers[0];
+    }
+
+    function getAveragePointerPosition(event: PointerEvent): Vector2 {
+      const position = new Vector2();
+    
+      if (event.pointerType === "mouse") {
+        position.x = event.clientX;
+        position.y = event.clientY;
+      } else {
+        const otherPointer = getOtherPointer(event);
+        position.x = (event.clientX + otherPointer.clientX) / 2;
+        position.y = (event.clientY + otherPointer.clientY) / 2;
+      }
+
+      return position;
+    }
+
     function preventContextMenu(event: Event) {
       event.preventDefault();
     }
 
-    scope.domElement.addEventListener( 'pointerdown', onPointerDown );
+    scope.domElement.addEventListener( 'pointerdown', onPointerDown, {passive: false} );
     scope.domElement.addEventListener( 'pointercancel', onPointerUp );
     scope.domElement.addEventListener( 'wheel', onMouseWheel, { passive: false } );
     // prevent context menu when right clicking

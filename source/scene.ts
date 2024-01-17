@@ -20,7 +20,7 @@ import Stats from 'three/examples/jsm/libs/stats.module'
 import { toggleFullScreen } from './helpers/fullscreen'
 import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { OrbitControls } from './orbitControls';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 
@@ -51,7 +51,7 @@ function init() {
     canvas = document.querySelector(`canvas#${CANVAS_ID}`)! as HTMLCanvasElement
     context = canvas.getContext('webgl2') as WebGL2RenderingContext
     renderer = new WebGLRenderer({ canvas, context, antialias: true, alpha: true, logarithmicDepthBuffer: false })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    renderer.setPixelRatio(window.devicePixelRatio)
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
     renderTarget = new WebGLRenderTarget(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
@@ -109,7 +109,7 @@ function init() {
 
   // ===== 🎥 CAMERA =====
   {
-    camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
+    camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000)
     camera.position.set(14,5, 4)
     camera.lookAt(new Vector3(0, 0, 0))
   }
