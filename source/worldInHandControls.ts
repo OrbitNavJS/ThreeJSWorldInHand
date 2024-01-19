@@ -62,11 +62,12 @@ class WorldInHandControls extends EventDispatcher {
     const mousePosition = new Vector2();
     const mouseWorldPosition = new Vector3();
     const zoomDirection = new Vector3();
-    //let previous
+
     const cameraLookAt = new Vector3();
     const rotateStart = new Vector2();
     const rotateEnd = new Vector2();
     const rotateDelta = new Vector2();
+    
     const panStart = new Vector3();
     const panHeightGuide = new Plane();
 
@@ -80,6 +81,10 @@ class WorldInHandControls extends EventDispatcher {
     this.scene.add(planeMesh);
 
     this.planeRenderTarget = new WebGLRenderTarget(domElement.clientWidth, domElement.clientHeight, {format: RGBAFormat, type: FloatType});
+
+    // calculate angle between inverse camera lookTo vector and y axis to prevent illegal rotation
+    let angleToYAxis = this.camera.position.clone().sub(cameraLookAt).angleTo(new Vector3(0, 1, 0)) % Math.PI;
+    if (angleToYAxis === 0) console.warn("Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.");
 
     //const testSphereGeometry = new SphereGeometry(0.25);
     //const testSphereMaterial = new MeshBasicMaterial();
@@ -151,9 +156,6 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function onPointerDown(event: PointerEvent): void {
-      console.log("pointers:", pointers.length)
-      console.log("previous:", previousPointers.length)
-
       scope.domElement.removeEventListener('pointermove', handlePointerMovePan);
       scope.domElement.removeEventListener('pointermove', handlePointerMoveRotate);
       scope.domElement.removeEventListener('pointermove', handleTouchMoveZoomRotate);
@@ -288,9 +290,15 @@ class WorldInHandControls extends EventDispatcher {
       const lookToInverse = camera.position.clone().sub(cameraLookAt);
       camera.position.sub(lookToInverse);
 
-      const screenX = new Vector3().crossVectors(lookToInverse, camera.up).normalize();
+      const cameraXAxis = new Vector3().crossVectors(lookToInverse, camera.up).normalize();
       const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
-      rotationMatrix.multiply(new Matrix4().makeRotationAxis(screenX, delta.y));
+
+      // prevent illegal rotation
+      const nextAngleToYAxis = angleToYAxis - delta.y;
+      if (nextAngleToYAxis > 0 && nextAngleToYAxis < Math.PI) {
+        rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, delta.y));
+        angleToYAxis = nextAngleToYAxis;
+      }
 
       lookToInverse.applyMatrix4(rotationMatrix);
       camera.position.add(lookToInverse);
