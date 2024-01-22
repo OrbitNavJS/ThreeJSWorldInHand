@@ -13,7 +13,9 @@ import {
   RGBAFormat, 
   Matrix4,
   Plane,
-  Ray
+  Ray,
+  Box3,
+  Sphere
 } from 'three';
 
 const _startEvent = {type: 'start'}
@@ -40,7 +42,7 @@ const fragmentShader =
 class WorldInHandControls extends EventDispatcher {
   protected domElement: HTMLCanvasElement
   protected camera: PerspectiveCamera // | OrthographicCamera
-  protected scene: Scene
+  protected depthBufferScene: Scene
   protected planeRenderTarget: WebGLRenderTarget
 
   public update: Function
@@ -55,6 +57,16 @@ class WorldInHandControls extends EventDispatcher {
 
     this.camera.lookAt(0, 0, 0);
 
+    /**
+     * Configuration
+     */
+
+    const useBottomOfBoundingBoxAsGroundPlane = true; // otherwise assumes ground plane y = 0
+
+    /**
+     * Internal variables
+     */
+    
     // Cannot be const because splice wouldn't shrink array size
     let pointers: Array<PointerEvent> = [];
     let previousPointers: Array<PointerEvent> = [];
@@ -77,24 +89,51 @@ class WorldInHandControls extends EventDispatcher {
 
     planeMaterial.vertexShader = vertexShader;
     planeMaterial.fragmentShader = fragmentShader;
-    this.scene = new Scene();
-    this.scene.add(planeMesh);
+    this.depthBufferScene = new Scene();
+    this.depthBufferScene.add(planeMesh);
 
     this.planeRenderTarget = new WebGLRenderTarget(domElement.clientWidth, domElement.clientHeight, {format: RGBAFormat, type: FloatType});
 
-    // calculate angle between inverse camera lookTo vector and y axis to prevent illegal rotation
-    let angleToYAxis = this.camera.position.clone().sub(cameraLookAt).angleTo(new Vector3(0, 1, 0)) % Math.PI;
-    if (angleToYAxis === 0) console.warn("Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.");
+    /**
+     * Navigation resiliency
+     */
 
+    // calculate angle between inverse camera lookTo vector and y axis to prevent illegal rotation
+    let angleToYAxis = this.camera.position.clone().sub(cameraLookAt).angleTo(new Vector3(0, 1, 0));
+    if (angleToYAxis === 0 || angleToYAxis === Math.PI) console.warn("Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.");
+
+    // calculate distance from camera to camera lookAt to prevent illegal zoom and pan
+    let distanceToCameraLookAt = this.camera.position.length();
+
+    // compute bounding sphere radius
+    let boundingSphereRadius: number;
+    let boundingHeightMin: number;
+
+    {
+      const box = new Box3().setFromObject(scene, true);
+      boundingSphereRadius = box.getBoundingSphere(new Sphere()).radius * 5;
+      boundingHeightMin = useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+    }
+    if (distanceToCameraLookAt > boundingSphereRadius) console.warn("Camera is very far from the scene. Consider putting your camera closer to the scene.");
+    
+    /**
+     * Testing
+     */
+    
     //const testSphereGeometry = new SphereGeometry(0.25);
     //const testSphereMaterial = new MeshBasicMaterial();
     //const testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
 
     //scene.add(testSphereMesh);
 
-    this.dispose = () => {
+    /**
+     * Utility functions
+     */
+
+    this.dispose = function () {
       scope.domElement.removeEventListener('pointermove', handlePointerMovePan);
       scope.domElement.removeEventListener('pointermove', handlePointerMoveRotate);
+      scope.domElement.removeEventListener('pointermove', handleTouchMoveZoomRotate);
       scope.domElement.removeEventListener('pointerup', onPointerUp);
       scope.domElement.removeEventListener( 'pointerdown', onPointerDown );
       scope.domElement.removeEventListener( 'pointercancel', onPointerUp );
@@ -273,7 +312,12 @@ class WorldInHandControls extends EventDispatcher {
 
     function zoom(amount: number): void {
       zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
-      camera.position.addScaledVector(zoomDirection, amount);
+
+      // prevent illegal zoom
+      const nextCameraPosition = camera.position.clone().addScaledVector(zoomDirection, amount);
+      if (nextCameraPosition.length() > boundingSphereRadius || ((nextCameraPosition.y - boundingHeightMin) / (camera.position.y - boundingHeightMin)) < 0) return;
+
+      camera.position.copy(nextCameraPosition);
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
 
@@ -295,7 +339,7 @@ class WorldInHandControls extends EventDispatcher {
 
       // prevent illegal rotation
       const nextAngleToYAxis = angleToYAxis - delta.y;
-      if (nextAngleToYAxis > 0 && nextAngleToYAxis < Math.PI) {
+      if (nextAngleToYAxis > 0 && nextAngleToYAxis < Math.PI - 0) {
         rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, delta.y));
         angleToYAxis = nextAngleToYAxis;
       }
@@ -311,7 +355,11 @@ class WorldInHandControls extends EventDispatcher {
     function pan(delta: Vector3): void {  
       delta.negate();
 
-      camera.position.add(delta);
+      // prevent illegal pan
+      const nextCameraPosition = camera.position.clone().add(delta);
+      if (nextCameraPosition.length() > boundingSphereRadius) return;
+
+      camera.position.copy(nextCameraPosition);
       cameraLookAt.add(delta);
 
       camera.updateMatrixWorld();
@@ -390,7 +438,7 @@ class WorldInHandControls extends EventDispatcher {
       const yPixel = y * h/2 + h/2;
 
       renderer.setRenderTarget(scope.planeRenderTarget);
-      renderer.render(scope.scene, camera);
+      renderer.render(scope.depthBufferScene, camera);
 
       const depthPixel = new Float32Array(4);
       renderer.readRenderTargetPixels(scope.planeRenderTarget, xPixel, yPixel, 1, 1, depthPixel);

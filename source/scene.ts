@@ -102,6 +102,8 @@ function init() {
       model.position.set(10, 0, -6);
       scene.add( model );
 
+      if (cameraControls !== undefined) cameraControls.dispose();
+      cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
     }, undefined, function ( error: unknown ) {
       console.error( error );
     });
@@ -111,6 +113,7 @@ function init() {
   {
     camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000)
     camera.position.set(14,5, 4)
+    //camera.position.set(0, 0, 15);
     camera.lookAt(new Vector3(0, 0, 0))
   }
 
