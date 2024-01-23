@@ -62,6 +62,7 @@ class WorldInHandControls extends EventDispatcher {
      */
 
     const useBottomOfBoundingBoxAsGroundPlane = true; // otherwise assumes ground plane y = 0
+    const rotateBelowScene = true;
 
     /**
      * Internal variables
@@ -101,6 +102,7 @@ class WorldInHandControls extends EventDispatcher {
     // calculate angle between inverse camera lookTo vector and y axis to prevent illegal rotation
     let angleToYAxis = this.camera.position.clone().sub(cameraLookAt).angleTo(new Vector3(0, 1, 0));
     if (angleToYAxis === 0 || angleToYAxis === Math.PI) console.warn("Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.");
+    const maxLowerRotationAngle = rotateBelowScene ? Math.PI : Math.PI / 2;
 
     // calculate distance from camera to camera lookAt to prevent illegal zoom and pan
     let distanceToCameraLookAt = this.camera.position.length();
@@ -345,7 +347,7 @@ class WorldInHandControls extends EventDispatcher {
 
       // prevent illegal rotation
       const nextAngleToYAxis = angleToYAxis - delta.y;
-      if (nextAngleToYAxis > 0 && nextAngleToYAxis < Math.PI - 0) {
+      if (nextAngleToYAxis > 0 && nextAngleToYAxis < maxLowerRotationAngle) {
         rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, delta.y));
         angleToYAxis = nextAngleToYAxis;
       }
