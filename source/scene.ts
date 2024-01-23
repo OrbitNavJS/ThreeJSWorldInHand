@@ -41,9 +41,15 @@ let axesHelper: AxesHelper
 let stats: Stats
 let gui: GUI
 
+let updateRequested = true;
 
 init()
 animate()
+
+function requestUpdate() {
+  updateRequested = true;
+  requestAnimationFrame(requestUpdate);
+}
 
 function init() {
   // ===== 🖼️ CANVAS, RENDERER, & SCENE =====
@@ -57,6 +63,9 @@ function init() {
     renderTarget = new WebGLRenderTarget(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
     renderTarget.depthTexture = new DepthTexture(renderTarget.width, renderTarget.height, FloatType);
     renderTarget.depthTexture.format = DepthFormat
+
+    requestAnimationFrame(requestUpdate)
+
     scene = new Scene()
   }
 
@@ -104,6 +113,9 @@ function init() {
 
       if (cameraControls !== undefined) cameraControls.dispose();
       cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+      cameraControls.addEventListener('change', animate)
+      updateRequested = true;
+      animate();
     }, undefined, function ( error: unknown ) {
       console.error( error );
     });
@@ -156,11 +168,19 @@ function init() {
     const navigationMode = { current: null }
     navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
       if (value === 'world-in-hand') {
-        if (cameraControls !== undefined) cameraControls.dispose();
+        if (cameraControls !== undefined) {
+          cameraControls.dispose();
+          cameraControls.removeEventListener('change', animate)
+        }
         cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+        cameraControls.addEventListener('change', animate)
       } else if (value === 'orbit') {
-        if (cameraControls !== undefined) cameraControls.dispose();
+        if (cameraControls !== undefined) {
+          cameraControls.dispose();
+          cameraControls.removeEventListener('change', animate)
+        }
         cameraControls = new OrbitControls(camera, canvas);
+        cameraControls.addEventListener('change', animate)
       }
     })
 
@@ -193,7 +213,8 @@ function init() {
 }
 
 function animate() {
-  requestAnimationFrame(animate)
+  if (!updateRequested) return
+  updateRequested = false
 
   stats.update()
 

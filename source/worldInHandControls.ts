@@ -39,7 +39,7 @@ const fragmentShader =
   }`
 ;
 
-class WorldInHandControls extends EventDispatcher {
+class WorldInHandControls extends EventTarget {
   protected domElement: HTMLCanvasElement
   protected camera: PerspectiveCamera // | OrthographicCamera
   protected depthBufferScene: Scene
@@ -63,6 +63,7 @@ class WorldInHandControls extends EventDispatcher {
 
     const useBottomOfBoundingBoxAsGroundPlane = true; // otherwise assumes ground plane y = 0
     const rotateBelowScene = true;
+    const rotateAroundMousePosition = false; // otherwise rotates around center of screen
 
     /**
      * Internal variables
@@ -195,11 +196,7 @@ class WorldInHandControls extends EventDispatcher {
 
     function onMouseWheel(event: WheelEvent): void {
       event.preventDefault();
-      // @ts-ignore
-      scope.dispatchEvent( _startEvent );
       handleMouseWheel( event );
-      // @ts-ignore
-      scope.dispatchEvent( _endEvent );
     }
 
     function onPointerDown(event: PointerEvent): void {
@@ -262,10 +259,14 @@ class WorldInHandControls extends EventDispatcher {
       zoom(-(event.deltaY / Math.abs(event.deltaY)));
 
       scope.update();
+      scope.dispatchEvent(new Event('change'));
     }
 
     function handlePointerDownRotate(event: PointerEvent): void {
-      rotateStart.copy(getAveragePointerPosition(event));
+      const averagePointerPosition = getAveragePointerPosition(event);
+      updateMouseParameters(averagePointerPosition.x, averagePointerPosition.y)
+
+      rotateStart.copy(averagePointerPosition);
   	}
 
     function handlePointerMoveRotate(event: PointerEvent): void {
@@ -276,6 +277,7 @@ class WorldInHandControls extends EventDispatcher {
 
       rotateStart.copy( rotateEnd );
       scope.update();
+      scope.dispatchEvent(new Event('change'));
     }
 
     function handlePointerDownPan(event: PointerEvent): void {
@@ -295,6 +297,7 @@ class WorldInHandControls extends EventDispatcher {
       pan(panCurrent.clone().sub(panStart));
 
       scope.update();
+      scope.dispatchEvent(new Event('change'));
     }
 
     function handleTouchMoveZoomRotate(event: PointerEvent) {
@@ -302,6 +305,7 @@ class WorldInHandControls extends EventDispatcher {
 
       handlePointerMoveRotate(event);
       handleTouchMoveZoom(event);
+      scope.dispatchEvent(new Event('change'));
     }
 
     function handleTouchMoveZoom(event: PointerEvent) {
@@ -316,6 +320,7 @@ class WorldInHandControls extends EventDispatcher {
       const delta = (currLength - prevLength);
  
       zoom(delta * 0.01);
+      scope.dispatchEvent(new Event('change'));
     }
 
     function zoom(amount: number): void {
@@ -339,10 +344,11 @@ class WorldInHandControls extends EventDispatcher {
     }
 
     function rotate(delta: Vector2): void {
-      const lookToInverse = camera.position.clone().sub(cameraLookAt);
-      camera.position.sub(lookToInverse);
+      const rotationCenter = rotateAroundMousePosition ? mouseWorldPosition : cameraLookAt;
+      const rotationCenterToCamera = camera.position.clone().sub(rotationCenter);
+      camera.position.sub(rotationCenterToCamera);
 
-      const cameraXAxis = new Vector3().crossVectors(lookToInverse, camera.up).normalize();
+      const cameraXAxis = new Vector3().crossVectors(rotationCenterToCamera, camera.up).normalize();
       const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
 
       // prevent illegal rotation
@@ -352,8 +358,8 @@ class WorldInHandControls extends EventDispatcher {
         angleToYAxis = nextAngleToYAxis;
       }
 
-      lookToInverse.applyMatrix4(rotationMatrix);
-      camera.position.add(lookToInverse);
+      rotationCenterToCamera.applyMatrix4(rotationMatrix);
+      camera.position.add(rotationCenterToCamera);
       camera.lookAt(cameraLookAt);
 
       camera.updateProjectionMatrix();
