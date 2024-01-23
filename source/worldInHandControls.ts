@@ -105,17 +105,23 @@ class WorldInHandControls extends EventDispatcher {
     // calculate distance from camera to camera lookAt to prevent illegal zoom and pan
     let distanceToCameraLookAt = this.camera.position.length();
 
-    // compute bounding sphere radius
+    // compute bounding sphere radius and back of scene from camera position
     let boundingSphereRadius: number;
     let boundingHeightMin: number;
+    let boundingDepthNDC: number;
 
     {
       const box = new Box3().setFromObject(scene, true);
-      boundingSphereRadius = box.getBoundingSphere(new Sphere()).radius * 5;
+      const boundingSphere = box.getBoundingSphere(new Sphere());
+      boundingSphereRadius = boundingSphere.radius * 5;
       boundingHeightMin = useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+
+      const direction = camera.position.clone().negate().normalize();
+      const backPoint = boundingSphere.center.clone().addScaledVector(direction, boundingSphere.radius);
+      boundingDepthNDC = backPoint.clone().project(camera).z;
     }
     if (distanceToCameraLookAt > boundingSphereRadius) console.warn("Camera is very far from the scene. Consider putting your camera closer to the scene.");
-    
+
     /**
      * Testing
      */
@@ -407,6 +413,12 @@ class WorldInHandControls extends EventDispatcher {
       previousPointers.splice(index, 1);
     }
 
+    /**
+     * Sets mousePosition to the current mouse position in NDC and sets
+     * mouseWorldPosition to the current mouse position in world coordinates.<br />
+     * <b>If the depthbuffer value at the current mouse position is greater than
+     * boundingDepthNDC, boundingDepthNDC is used instead.</b>
+     */
     function updateMouseParameters(eventX: number, eventY: number): void {
       const rect = scope.domElement.getBoundingClientRect();
       
@@ -418,7 +430,7 @@ class WorldInHandControls extends EventDispatcher {
       mousePosition.x = ( x / w ) * 2 - 1;
       mousePosition.y = 1 - ( y / h ) * 2;
 
-      const linearDepth = readDepthAtPosition(mousePosition.x, mousePosition.y);
+      const linearDepth = Math.min(readDepthAtPosition(mousePosition.x, mousePosition.y), boundingDepthNDC);
       mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth);
       mouseWorldPosition.unproject(camera);
     }
