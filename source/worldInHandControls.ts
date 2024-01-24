@@ -1,5 +1,4 @@
 import {
-  EventDispatcher,
   FloatType,
   Mesh,
   PerspectiveCamera,
@@ -18,8 +17,6 @@ import {
   Sphere
 } from 'three';
 
-const _startEvent = {type: 'start'}
-const _endEvent = {type: 'end'}
 
 const vertexShader =
   `varying vec2 vUV;
