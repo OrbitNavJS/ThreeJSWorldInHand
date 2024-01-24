@@ -18,7 +18,6 @@ import {
 import { WorldInHandControls } from './worldInHandControls'
 import Stats from 'three/examples/jsm/libs/stats.module'
 import { toggleFullScreen } from './helpers/fullscreen'
-import { resizeRendererToDisplaySize } from './helpers/responsiveness'
 import './style.css'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
@@ -44,7 +43,7 @@ let gui: GUI
 let updateRequested = true;
 
 init()
-animate()
+animate(true)
 
 function requestUpdate() {
   updateRequested = true;
@@ -65,6 +64,7 @@ function init() {
     renderTarget.depthTexture.format = DepthFormat
 
     requestAnimationFrame(requestUpdate)
+    window.addEventListener('resize', () => { animate(true) })
 
     scene = new Scene()
   }
@@ -113,9 +113,9 @@ function init() {
 
       if (cameraControls !== undefined) cameraControls.dispose();
       cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
-      cameraControls.addEventListener('change', animate)
+      cameraControls.addEventListener('change', () => { animate(false) })
       updateRequested = true;
-      animate();
+      animate(false);
     }, undefined, function ( error: unknown ) {
       console.error( error );
     });
@@ -170,17 +170,17 @@ function init() {
       if (value === 'world-in-hand') {
         if (cameraControls !== undefined) {
           cameraControls.dispose();
-          cameraControls.removeEventListener('change', animate)
+          cameraControls.removeEventListener('change', () => { animate(false) })
         }
         cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
-        cameraControls.addEventListener('change', animate)
+        cameraControls.addEventListener('change', () => { animate(false) })
       } else if (value === 'orbit') {
         if (cameraControls !== undefined) {
           cameraControls.dispose();
-          cameraControls.removeEventListener('change', animate)
+          cameraControls.removeEventListener('change', () => { animate(false) })
         }
         cameraControls = new OrbitControls(camera, canvas);
-        cameraControls.addEventListener('change', animate)
+        cameraControls.addEventListener('change', () => { animate(false) })
       }
     })
 
@@ -212,16 +212,19 @@ function init() {
   }
 }
 
-function animate() {
-  if (!updateRequested) return
+function animate(resize: boolean) {
+  console.log(resize)
+
+  if (!updateRequested && !resize) return
   updateRequested = false
 
   stats.update()
 
-  if (resizeRendererToDisplaySize(renderer)) {
+  if (resize) {
     const canvas = renderer.domElement;
     camera.aspect = canvas.clientWidth / canvas.clientHeight;
     camera.updateProjectionMatrix();
+    renderer.setSize(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio, false)
     renderTarget.setSize(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
   }
 
