@@ -174,6 +174,7 @@ function init() {
         }
         cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
         cameraControls.addEventListener('change', () => { animate(false) })
+        animate(true)
       } else if (value === 'orbit') {
         if (cameraControls !== undefined) {
           cameraControls.dispose();
@@ -181,6 +182,7 @@ function init() {
         }
         cameraControls = new OrbitControls(camera, canvas);
         cameraControls.addEventListener('change', () => { animate(false) })
+        animate(true)
       }
     })
 
@@ -195,6 +197,7 @@ function init() {
     gui.onFinishChange(() => {
       const guiState = gui.save()
       localStorage.setItem('guiState', JSON.stringify(guiState))
+      animate(false)
     })
 
     // load GUI state if available in local storage
@@ -205,6 +208,7 @@ function init() {
     const resetGui = () => {
       localStorage.removeItem('guiState')
       gui.reset()
+      animate(false)
     }
     gui.add({ resetGui }, 'resetGui').name('RESET')
 
@@ -213,8 +217,6 @@ function init() {
 }
 
 function animate(resize: boolean) {
-  console.log(resize)
-
   if (!updateRequested && !resize) return
   updateRequested = false
 
