@@ -100,7 +100,8 @@ class WorldInHandControls extends EventTarget {
     // calculate angle between inverse camera lookTo vector and y axis to prevent illegal rotation
     let angleToYAxis = this.camera.position.clone().sub(cameraLookAt).angleTo(new Vector3(0, 1, 0));
     if (angleToYAxis === 0 || angleToYAxis === Math.PI) console.warn("Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.");
-    const maxLowerRotationAngle = rotateBelowScene ? Math.PI : Math.PI / 2;
+    // pi - 0.001 to prevent rotation onto y-axis
+    const maxLowerRotationAngle = rotateBelowScene ? Math.PI - 0.001 : Math.PI / 2;
 
     // calculate distance from camera to camera lookAt to prevent illegal zoom and pan
     let distanceToCameraLookAt = this.camera.position.length();
@@ -349,11 +350,12 @@ class WorldInHandControls extends EventTarget {
       const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
 
       // prevent illegal rotation
-      const nextAngleToYAxis = angleToYAxis - delta.y;
-      if (nextAngleToYAxis > 0 && nextAngleToYAxis < maxLowerRotationAngle) {
-        rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, delta.y));
-        angleToYAxis = nextAngleToYAxis;
-      }
+      let nextAngleToYAxis = angleToYAxis - delta.y;
+      nextAngleToYAxis = Math.max(Math.min(nextAngleToYAxis, maxLowerRotationAngle), 0.001);
+      const rotationDelta = angleToYAxis - nextAngleToYAxis;
+      rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, rotationDelta));
+      angleToYAxis = nextAngleToYAxis;
+
 
       rotationCenterToCamera.applyMatrix4(rotationMatrix);
       camera.position.add(rotationCenterToCamera);
