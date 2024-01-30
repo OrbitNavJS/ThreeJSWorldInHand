@@ -22,7 +22,6 @@ import './style.css'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
-
 const CANVAS_ID = 'scene'
 
 let canvas: HTMLCanvasElement
@@ -111,9 +110,12 @@ function init() {
       model.position.set(10, 0, -6);
       scene.add( model );
 
-      if (cameraControls !== undefined) cameraControls.dispose();
+      /*if (cameraControls !== undefined) cameraControls.dispose();
       cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
-      cameraControls.addEventListener('change', () => { animate(false) })
+      cameraControls.addEventListener('change', () => { animate(false) })*/
+
+      scene.dispatchEvent({type: 'change'});
+
       updateRequested = true;
       animate(false);
     }, undefined, function ( error: unknown ) {
@@ -132,6 +134,7 @@ function init() {
   // ===== 🕹️ CONTROLS =====
   {
     cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+    cameraControls.addEventListener('change', () => { animate(false) })
     //cameraControls = new OrbitControls(camera, canvas);
 
     // Full screen
@@ -218,6 +221,7 @@ function init() {
 
 function animate(resize: boolean) {
   if (!updateRequested && !resize) return
+
   updateRequested = false
 
   stats.update()

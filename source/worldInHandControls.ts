@@ -17,7 +17,6 @@ import {
   Sphere,
 } from 'three';
 
-
 const vertexShader =
   `varying vec2 vUV;
 
@@ -36,13 +35,13 @@ const fragmentShader =
 ;
 
 class WorldInHandControls extends EventTarget {
-  protected domElement: HTMLCanvasElement
-  protected camera: PerspectiveCamera // | OrthographicCamera
-  protected depthBufferScene: Scene
-  protected planeRenderTarget: WebGLRenderTarget
+  protected domElement: HTMLCanvasElement;
+  protected camera: PerspectiveCamera; // | OrthographicCamera
+  protected depthBufferScene: Scene;
+  protected planeRenderTarget: WebGLRenderTarget;
 
-  public update: Function
-  public dispose: Function
+  public update: Function;
+  public dispose: Function;
 
   constructor (camera: PerspectiveCamera /* | OrthographicCamera */, domElement: HTMLCanvasElement, renderTarget: WebGLRenderTarget, renderer: WebGLRenderer, scene: Scene){
 	  super();
@@ -52,6 +51,8 @@ class WorldInHandControls extends EventTarget {
     this.domElement.style.touchAction = 'none'; // disable touch scroll
 
     this.camera.lookAt(0, 0, 0);
+
+    scene.addEventListener('change', setupBoundingSphere);
 
     /**
      * Configuration
@@ -107,20 +108,13 @@ class WorldInHandControls extends EventTarget {
     let distanceToCameraLookAt = this.camera.position.length();
 
     // compute bounding sphere radius and back of scene from camera position
-    let maxPanZoomDistance: number;
+    let maxPanZoomDistance: number = -1;
     let boundingHeightMin: number;
     let boundingDepthNDC: number;
     const sceneBackPoint = new Vector3();
     const boundingSphere = new Sphere();
 
-    {
-      const box = new Box3().setFromObject(scene, true);
-      box.getBoundingSphere(boundingSphere);
-      maxPanZoomDistance = boundingSphere.radius * 5;
-      boundingHeightMin = useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
-
-      calculateBackSpherePosition();
-    }
+    setupBoundingSphere();
     if (distanceToCameraLookAt > maxPanZoomDistance) console.warn("Camera is very far from the scene. Consider putting your camera closer to the scene.");
 
     /**
@@ -148,8 +142,8 @@ class WorldInHandControls extends EventTarget {
       scope.domElement.removeEventListener( 'contextmenu', preventContextMenu);
     }
 
-    this.update = function(this: WorldInHandControls, deltaTime?: number | null): void {
-      planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } }
+    this.update = function(): void {
+      planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } };
 
       // SHOW FRAMEBUFFER
       /*renderer.setRenderTarget(scope.planeRenderTarget);
@@ -394,6 +388,18 @@ class WorldInHandControls extends EventTarget {
       const direction = new Vector3(0, 0, 1).unproject(camera).normalize();
       sceneBackPoint.copy(boundingSphere.center.clone().addScaledVector(direction, boundingSphere.radius));
       boundingDepthNDC = sceneBackPoint.clone().project(camera).z;
+    }
+
+    /**
+     * Calculates the bounding sphere of the scene and sets resiliency variables accordingly.
+     */
+    function setupBoundingSphere() {
+      const box = new Box3().setFromObject(scene, true);
+      box.getBoundingSphere(boundingSphere);
+      maxPanZoomDistance = boundingSphere.radius * 5;
+      boundingHeightMin = useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+
+      calculateBackSpherePosition();
     }
 
     /**
