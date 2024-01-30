@@ -14,7 +14,7 @@ import {
   Plane,
   Ray,
   Box3,
-  Sphere
+  Sphere,
 } from 'three';
 
 
@@ -32,7 +32,6 @@ const fragmentShader =
 
   void main() {
     gl_FragColor = texture(uDepthTexture, vUV);
-    //gl_FragColor = vec4(vUV, 0., 1.);
   }`
 ;
 
@@ -85,13 +84,14 @@ class WorldInHandControls extends EventTarget {
     const planeGeometry = new PlaneGeometry(2, 2);
     const planeMaterial = new ShaderMaterial();
     const planeMesh = new Mesh(planeGeometry, planeMaterial);
+    planeMesh.frustumCulled = false;
 
     planeMaterial.vertexShader = vertexShader;
     planeMaterial.fragmentShader = fragmentShader;
     this.depthBufferScene = new Scene();
     this.depthBufferScene.add(planeMesh);
 
-    this.planeRenderTarget = new WebGLRenderTarget(domElement.clientWidth, domElement.clientHeight, {format: RGBAFormat, type: FloatType});
+    this.planeRenderTarget = new WebGLRenderTarget(renderTarget.width, renderTarget.height, {format: RGBAFormat, type: FloatType});
 
     /**
      * Navigation resiliency
@@ -107,21 +107,21 @@ class WorldInHandControls extends EventTarget {
     let distanceToCameraLookAt = this.camera.position.length();
 
     // compute bounding sphere radius and back of scene from camera position
-    let boundingSphereRadius: number;
+    let maxPanZoomDistance: number;
     let boundingHeightMin: number;
     let boundingDepthNDC: number;
+    const sceneBackPoint = new Vector3();
+    const boundingSphere = new Sphere();
 
     {
       const box = new Box3().setFromObject(scene, true);
-      const boundingSphere = box.getBoundingSphere(new Sphere());
-      boundingSphereRadius = boundingSphere.radius * 5;
+      box.getBoundingSphere(boundingSphere);
+      maxPanZoomDistance = boundingSphere.radius * 5;
       boundingHeightMin = useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
-      const direction = camera.position.clone().negate().normalize();
-      const backPoint = boundingSphere.center.clone().addScaledVector(direction, boundingSphere.radius);
-      boundingDepthNDC = backPoint.clone().project(camera).z;
+      calculateBackSpherePosition();
     }
-    if (distanceToCameraLookAt > boundingSphereRadius) console.warn("Camera is very far from the scene. Consider putting your camera closer to the scene.");
+    if (distanceToCameraLookAt > maxPanZoomDistance) console.warn("Camera is very far from the scene. Consider putting your camera closer to the scene.");
 
     /**
      * Testing
@@ -153,7 +153,7 @@ class WorldInHandControls extends EventTarget {
 
       // SHOW FRAMEBUFFER
       /*renderer.setRenderTarget(scope.planeRenderTarget);
-      renderer.render(scope.scene, camera);
+      renderer.render(this.depthBufferScene, camera);
 
       let canvas = document.getElementById("scene") as HTMLCanvasElement;
 
@@ -250,7 +250,6 @@ class WorldInHandControls extends EventTarget {
       else onPointerDown(pointers[0]);
     }
     
-
     function handleMouseWheel(event: WheelEvent): void {
       updateMouseParameters(event.clientX, event.clientY);
 
@@ -323,10 +322,11 @@ class WorldInHandControls extends EventTarget {
 
     function zoom(amount: number): void {
       zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
+      const delta = zoomDirection.clone().multiplyScalar(amount);
 
       // prevent illegal zoom
-      const nextCameraPosition = camera.position.clone().addScaledVector(zoomDirection, amount);
-      if (nextCameraPosition.length() > boundingSphereRadius || ((nextCameraPosition.y - boundingHeightMin) / (camera.position.y - boundingHeightMin)) < 0) return;
+      const nextCameraPosition = camera.position.clone().add(delta);
+      if (nextCameraPosition.length() > maxPanZoomDistance || ((nextCameraPosition.y - boundingHeightMin) / (camera.position.y - boundingHeightMin)) < 0) return;
 
       camera.position.copy(nextCameraPosition);
       camera.updateProjectionMatrix();
@@ -339,6 +339,9 @@ class WorldInHandControls extends EventTarget {
       // Height of camera reference point should not change
       const intersectionXZ = camera.position.clone().add(cameraLookAt.clone().sub(camera.position).multiplyScalar(scalingFactor));
       cameraLookAt.copy(intersectionXZ);
+
+      // update furthest scene depth in camera coordinates
+      calculateBackSpherePosition();
     }
 
     function rotate(delta: Vector2): void {
@@ -356,27 +359,41 @@ class WorldInHandControls extends EventTarget {
       rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, rotationDelta));
       angleToYAxis = nextAngleToYAxis;
 
-
       rotationCenterToCamera.applyMatrix4(rotationMatrix);
       camera.position.add(rotationCenterToCamera);
       camera.lookAt(cameraLookAt);
 
       camera.updateProjectionMatrix();
       camera.updateMatrixWorld();
+
+      // update furthest scene depth in camera coordinates
+      calculateBackSpherePosition();
     }
 
-    function pan(delta: Vector3): void {  
+    function pan(delta: Vector3): void {
       delta.negate();
 
       // prevent illegal pan
       const nextCameraPosition = camera.position.clone().add(delta);
-      if (nextCameraPosition.length() > boundingSphereRadius) return;
+      if (nextCameraPosition.length() > maxPanZoomDistance) return;
 
       camera.position.copy(nextCameraPosition);
       cameraLookAt.add(delta);
 
       camera.updateMatrixWorld();
       camera.updateProjectionMatrix();
+
+      // update furthest scene depth in camera coordinates
+      calculateBackSpherePosition();
+    }
+
+    /** 
+     * Calculates the furthest scene depth in camera coordinates and stores it in boundingDepthNDC.
+    */
+    function calculateBackSpherePosition() {
+      const direction = new Vector3(0, 0, 1).unproject(camera).normalize();
+      sceneBackPoint.copy(boundingSphere.center.clone().addScaledVector(direction, boundingSphere.radius));
+      boundingDepthNDC = sceneBackPoint.clone().project(camera).z;
     }
 
     /**
@@ -437,8 +454,9 @@ class WorldInHandControls extends EventTarget {
       mousePosition.x = ( x / w ) * 2 - 1;
       mousePosition.y = 1 - ( y / h ) * 2;
 
-      const linearDepth = Math.min(readDepthAtPosition(mousePosition.x, mousePosition.y), boundingDepthNDC);
-      mouseWorldPosition.set(mousePosition.x, mousePosition.y, linearDepth);
+      const depth = readDepthAtPosition(mousePosition.x, mousePosition.y);
+      const clampedDepth = Math.min(depth, boundingDepthNDC);
+      mouseWorldPosition.set(mousePosition.x, mousePosition.y, clampedDepth);
       mouseWorldPosition.unproject(camera);
     }
 
@@ -448,10 +466,8 @@ class WorldInHandControls extends EventTarget {
      * @return NDC depth [-1, 1] at the specified coordinates
      */
     function readDepthAtPosition(x: number, y: number): number {
-      const rect = scope.domElement.getBoundingClientRect();
-
-      const w = rect.width;
-      const h = rect.height;
+      const w = scope.planeRenderTarget.width;
+      const h = scope.planeRenderTarget.height;
 
       const xPixel = x * w/2 + w/2;
       const yPixel = y * h/2 + h/2;
