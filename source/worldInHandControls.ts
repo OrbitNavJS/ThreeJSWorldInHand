@@ -15,6 +15,8 @@ import {
   Ray,
   Box3,
   Sphere,
+  DepthFormat,
+  DepthTexture
 } from 'three';
 
 const vertexShader =
@@ -24,6 +26,7 @@ const vertexShader =
     vUV = uv;
     gl_Position = vec4(position, 1.0);
   }`
+;
 
 const fragmentShader = 
   `varying vec2 vUV;
@@ -39,11 +42,12 @@ class WorldInHandControls extends EventTarget {
   protected camera: PerspectiveCamera; // | OrthographicCamera
   protected depthBufferScene: Scene;
   protected planeRenderTarget: WebGLRenderTarget;
+  readonly navigationRenderTarget: WebGLRenderTarget;
 
   public update: Function;
   public dispose: Function;
 
-  constructor (camera: PerspectiveCamera /* | OrthographicCamera */, domElement: HTMLCanvasElement, renderTarget: WebGLRenderTarget, renderer: WebGLRenderer, scene: Scene){
+  constructor (camera: PerspectiveCamera /* | OrthographicCamera */, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene){
 	  super();
     const scope = this;
     this.camera = camera;
@@ -52,7 +56,18 @@ class WorldInHandControls extends EventTarget {
 
     this.camera.lookAt(0, 0, 0);
 
+    /**
+     * Creates the framebuffer-like RenderTarget which dictates how the navigation works. This should contain the final rendered scene you want to navigate on.
+     */
+    {
+      const size = renderer.getSize(new Vector2);
+      this.navigationRenderTarget = new WebGLRenderTarget(size.x, size.y);
+      this.navigationRenderTarget.depthTexture = new DepthTexture(size.x, size.y, FloatType);
+      this.navigationRenderTarget.depthTexture.format = DepthFormat;
+    }
+
     scene.addEventListener('change', setupBoundingSphere);
+    scene.addEventListener('resize', updateRenderTargets);
 
     /**
      * Configuration
@@ -92,7 +107,7 @@ class WorldInHandControls extends EventTarget {
     this.depthBufferScene = new Scene();
     this.depthBufferScene.add(planeMesh);
 
-    this.planeRenderTarget = new WebGLRenderTarget(renderTarget.width, renderTarget.height, {format: RGBAFormat, type: FloatType});
+    this.planeRenderTarget = new WebGLRenderTarget(this.navigationRenderTarget.width, this.navigationRenderTarget.height, {format: RGBAFormat, type: FloatType});
 
     /**
      * Navigation resiliency
@@ -143,7 +158,7 @@ class WorldInHandControls extends EventTarget {
     }
 
     this.update = function(): void {
-      planeMaterial.uniforms = { uDepthTexture: { value: renderTarget.depthTexture } };
+      planeMaterial.uniforms = { uDepthTexture: { value: this.navigationRenderTarget.depthTexture } };
 
       // SHOW FRAMEBUFFER
       /*renderer.setRenderTarget(scope.planeRenderTarget);
@@ -400,6 +415,16 @@ class WorldInHandControls extends EventTarget {
       boundingHeightMin = useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
       calculateBackSpherePosition();
+    }
+    
+    /**
+     * Updates the sizes of all RenderTargets with the renderer size. This should be called whenever the renderer is resized.
+     */
+    function updateRenderTargets() {
+      const size = renderer.getSize(new Vector2);
+
+      scope.planeRenderTarget.setSize(size.x, size.y);
+      scope.navigationRenderTarget.setSize(size.x, size.y);
     }
 
     /**

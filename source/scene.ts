@@ -2,16 +2,12 @@ import GUI from 'lil-gui'
 import {
   AmbientLight,
   AxesHelper,
-  DepthFormat,
-  DepthTexture,
   DirectionalLightHelper,
   LoadingManager,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Scene,
-  FloatType,
   Vector3,
-  WebGLRenderTarget,
   WebGLRenderer,
   DirectionalLight
 } from 'three'
@@ -27,7 +23,6 @@ const CANVAS_ID = 'scene'
 let canvas: HTMLCanvasElement
 let context: WebGL2RenderingContext
 let renderer: WebGLRenderer
-let renderTarget: WebGLRenderTarget
 let scene: Scene
 let loadingManager: LoadingManager
 let ambientLight: AmbientLight
@@ -58,9 +53,6 @@ function init() {
     renderer.setPixelRatio(window.devicePixelRatio)
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
-    renderTarget = new WebGLRenderTarget(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
-    renderTarget.depthTexture = new DepthTexture(renderTarget.width, renderTarget.height, FloatType);
-    renderTarget.depthTexture.format = DepthFormat
 
     requestAnimationFrame(requestUpdate)
     window.addEventListener('resize', () => { animate(true) })
@@ -133,7 +125,7 @@ function init() {
 
   // ===== 🕹️ CONTROLS =====
   {
-    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+    cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene)
     cameraControls.addEventListener('change', () => { animate(false) })
     //cameraControls = new OrbitControls(camera, canvas);
 
@@ -175,7 +167,7 @@ function init() {
           cameraControls.dispose();
           cameraControls.removeEventListener('change', () => { animate(false) })
         }
-        cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
+        cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene)
         cameraControls.addEventListener('change', () => { animate(false) })
         animate(true)
       } else if (value === 'orbit') {
@@ -230,14 +222,16 @@ function animate(resize: boolean) {
     const canvas = renderer.domElement;
     camera.aspect = canvas.clientWidth / canvas.clientHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio, false)
-    renderTarget.setSize(canvas.clientWidth * window.devicePixelRatio, canvas.clientHeight * window.devicePixelRatio);
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)
+    scene.dispatchEvent({type: 'resize'});
   }
 
   cameraControls.update()
 
-  renderer.setRenderTarget(renderTarget)
-  renderer.render(scene, camera)
+  if (cameraControls instanceof WorldInHandControls) {
+    renderer.setRenderTarget(cameraControls.navigationRenderTarget)
+    renderer.render(scene, camera)
+  }
   renderer.setRenderTarget(null)
   renderer.render(scene, camera)
 }
