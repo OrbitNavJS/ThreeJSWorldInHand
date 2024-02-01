@@ -34,14 +34,16 @@ let axesHelper: AxesHelper
 let stats: Stats
 let gui: GUI
 
-let updateRequested = true;
+let updateRequested = false;
+let resizeRequested = true;
 
 init()
-animate(true)
 
 function requestUpdate() {
+  if (updateRequested) return;
+
   updateRequested = true;
-  requestAnimationFrame(requestUpdate);
+  requestAnimationFrame(animate);
 }
 
 function init() {
@@ -54,8 +56,7 @@ function init() {
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = PCFSoftShadowMap
 
-    requestAnimationFrame(requestUpdate)
-    window.addEventListener('resize', () => { animate(true) })
+    window.addEventListener('resize', () => { resizeRequested = true; requestUpdate();});
 
     scene = new Scene()
   }
@@ -102,14 +103,10 @@ function init() {
       model.position.set(10, 0, -6);
       scene.add( model );
 
-      /*if (cameraControls !== undefined) cameraControls.dispose();
-      cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderTarget, renderer, scene)
-      cameraControls.addEventListener('change', () => { animate(false) })*/
-
+      // @ts-ignore
       scene.dispatchEvent({type: 'change'});
 
-      updateRequested = true;
-      animate(false);
+      requestUpdate();
     }, undefined, function ( error: unknown ) {
       console.error( error );
     });
@@ -126,7 +123,7 @@ function init() {
   // ===== 🕹️ CONTROLS =====
   {
     cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene)
-    cameraControls.addEventListener('change', () => { animate(false) })
+    cameraControls.addEventListener('change', requestUpdate);
     //cameraControls = new OrbitControls(camera, canvas);
 
     // Full screen
@@ -165,21 +162,21 @@ function init() {
       if (value === 'world-in-hand') {
         if (cameraControls !== undefined) {
           cameraControls.dispose();
-          cameraControls.removeEventListener('change', () => { animate(false) })
+          cameraControls.removeEventListener('change', requestUpdate);
         }
-        cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene)
-        cameraControls.addEventListener('change', () => { animate(false) })
-        animate(true)
+        cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
+        cameraControls.addEventListener('change', requestUpdate);
+        requestUpdate();
       } else if (value === 'orbit') {
         if (cameraControls !== undefined) {
           cameraControls.dispose();
-          cameraControls.removeEventListener('change', () => { animate(false) })
+          cameraControls.removeEventListener('change', requestUpdate)
         }
         cameraControls = new OrbitControls(camera, canvas);
-        cameraControls.addEventListener('change', () => { animate(false) })
-        animate(true)
+        cameraControls.addEventListener('change', requestUpdate)
+        requestUpdate();
       }
-    })
+    });
 
     const lightsFolder = gui.addFolder('Lights')
     lightsFolder.add(ambientLight, 'visible').name('ambient light')
@@ -192,7 +189,7 @@ function init() {
     gui.onFinishChange(() => {
       const guiState = gui.save()
       localStorage.setItem('guiState', JSON.stringify(guiState))
-      animate(false)
+      requestUpdate();
     })
 
     // load GUI state if available in local storage
@@ -201,9 +198,9 @@ function init() {
 
     // reset GUI state button
     const resetGui = () => {
-      localStorage.removeItem('guiState')
-      gui.reset()
-      animate(false)
+      localStorage.removeItem('guiState');
+      gui.reset();
+      requestUpdate();
     }
     gui.add({ resetGui }, 'resetGui').name('RESET')
 
@@ -211,18 +208,17 @@ function init() {
   }
 }
 
-function animate(resize: boolean) {
-  if (!updateRequested && !resize) return
-
+function animate() {
   updateRequested = false
 
   stats.update()
 
-  if (resize) {
+  if (resizeRequested) {
     const canvas = renderer.domElement;
     camera.aspect = canvas.clientWidth / canvas.clientHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)
+    // @ts-ignore
     scene.dispatchEvent({type: 'resize'});
   }
 
