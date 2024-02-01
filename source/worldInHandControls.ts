@@ -323,18 +323,20 @@ class WorldInHandControls extends EventTarget {
 
       const currLength = new Vector2(event.clientX - otherPointer.clientX, event.clientY - otherPointer.clientY).length();
       const prevLength = new Vector2(previousPointers[0].clientX - previousPointers[1].clientX, previousPointers[0].clientY - previousPointers[1].clientY).length();
-      const delta = (currLength - prevLength);
+      const delta = (currLength - prevLength) / (Math.max(domElement.clientWidth, domElement.clientHeight)) * 5;
  
-      zoom(delta * 0.01);
+      zoom(delta);
       scope.dispatchEvent(new Event('change'));
     }
 
     function zoom(amount: number): void {
-      zoomDirection.copy(mouseWorldPosition).sub(camera.position).normalize();
-      const delta = zoomDirection.clone().multiplyScalar(amount);
+      zoomDirection.copy(mouseWorldPosition).sub(camera.position);
+
+      if (amount < 0) zoomDirection.multiplyScalar(0.33*amount);
+      else zoomDirection.multiplyScalar(0.25*amount);
 
       // prevent illegal zoom
-      const nextCameraPosition = camera.position.clone().add(delta);
+      const nextCameraPosition = camera.position.clone().add(zoomDirection);
       if (nextCameraPosition.length() > maxPanZoomDistance || ((nextCameraPosition.y - boundingHeightMin) / (camera.position.y - boundingHeightMin)) < 0) return;
 
       camera.position.copy(nextCameraPosition);
