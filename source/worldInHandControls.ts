@@ -334,6 +334,11 @@ class WorldInHandControls extends EventTarget {
     function zoom(amount: number): void {
       zoomDirection.copy(mouseWorldPosition).sub(camera.position);
 
+      // prevent zooms that put geometry between camera near plane and camera
+      const zoomAmount = zoomDirection.length();
+      const nearPlaneRatio = camera.near * 1.1 / zoomAmount;
+      zoomDirection.multiplyScalar(1 - nearPlaneRatio);
+
       if (amount < 0) zoomDirection.multiplyScalar(0.33*amount);
       else zoomDirection.multiplyScalar(0.25*amount);
 
