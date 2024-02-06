@@ -222,12 +222,12 @@ function animate() {
     scene.dispatchEvent({type: 'resize'});
   }
 
-  cameraControls.update()
-
   if (cameraControls instanceof WorldInHandControls) {
     renderer.setRenderTarget(cameraControls.navigationRenderTarget)
     renderer.render(scene, camera)
   }
   renderer.setRenderTarget(null)
   renderer.render(scene, camera)
+
+  cameraControls.update();
 }

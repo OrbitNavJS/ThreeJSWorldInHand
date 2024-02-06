@@ -159,6 +159,8 @@ class WorldInHandControls extends EventTarget {
 
     this.update = function(): void {
       planeMaterial.uniforms = { uDepthTexture: { value: this.navigationRenderTarget.depthTexture } };
+      renderer.setRenderTarget(scope.planeRenderTarget);
+      renderer.render(scope.depthBufferScene, camera);
 
       // SHOW FRAMEBUFFER
       /*renderer.setRenderTarget(scope.planeRenderTarget);
@@ -504,9 +506,6 @@ class WorldInHandControls extends EventTarget {
 
       const xPixel = x * w/2 + w/2;
       const yPixel = y * h/2 + h/2;
-
-      renderer.setRenderTarget(scope.planeRenderTarget);
-      renderer.render(scope.depthBufferScene, camera);
 
       const depthPixel = new Float32Array(4);
       renderer.readRenderTargetPixels(scope.planeRenderTarget, xPixel, yPixel, 1, 1, depthPixel);
