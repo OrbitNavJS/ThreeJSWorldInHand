@@ -340,7 +340,9 @@ export class WorldInHandControls extends EventTarget {
 
 		const mouseRay = new Ray(this.camera.position, this.mouseWorldPosition.clone().sub(this.camera.position).normalize());
 		const panCurrent = new Vector3();
-		mouseRay.intersectPlane(this.panHeightGuide, panCurrent);
+
+		// ignore if no intersection with height guide plane can be found
+		if (mouseRay.intersectPlane(this.panHeightGuide, panCurrent) === null) return;
 
 		this.pan(panCurrent.clone().sub(this.panStart));
 
