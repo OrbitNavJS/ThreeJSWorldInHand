@@ -24,7 +24,7 @@
   ],
   "include": [
     "source/**/*.ts"
-  ],
+, "worldInHandControls.ts"  ],
   "exclude": [
       "node_modules",
       "dist"
