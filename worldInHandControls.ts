@@ -16,8 +16,9 @@ import {
 	Box3,
 	Sphere,
 	DepthFormat,
-	DepthTexture, SphereGeometry, MeshBasicMaterial
+	DepthTexture,
 } from 'three';
+import { WorldInHandControlsVisualiser } from './worldInHandControlsVisualiser';
 
 export class WorldInHandControls extends EventTarget {
 	/**
@@ -68,7 +69,7 @@ export class WorldInHandControls extends EventTarget {
 	protected angleToYAxis!: number;
 	protected maxLowerRotationAngle!: number;
 	protected maxPanZoomDistance!: number;
-	protected boundingHeightMin!: number;
+	protected groundPlane!: number;
 	protected boundingDepthNDC!: number;
 	protected sceneBackPoint = new Vector3();
 	protected boundingSphere = new Sphere();
@@ -77,9 +78,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected debug = false;
-	
-	protected testSphereMesh: Mesh | undefined;
+	protected _visualiser: WorldInHandControlsDebugHelper | undefined;
 
 	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene) {
 		super();
@@ -141,14 +140,6 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.addEventListener('pointercancel', this.onPointerUpBound);
 		this.domElement.addEventListener('wheel', this.onMouseWheelBound, { passive: false });
 		this.domElement.addEventListener('contextmenu', this.preventContextMenu);
-
-		if (this.debug) {
-			const testSphereGeometry = new SphereGeometry(0.25);
-			const testSphereMaterial = new MeshBasicMaterial();
-			this.testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
-			
-			this.actualScene.add(this.testSphereMesh);
-		}
 	}
 
 	/*
@@ -171,7 +162,7 @@ export class WorldInHandControls extends EventTarget {
 		const nextCameraPosition = this.camera.position.clone().add(this.zoomDirection);
 		if (nextCameraPosition.length() > this.maxPanZoomDistance
 			// prevent zoom through ground plane
-			|| ((nextCameraPosition.y - this.boundingHeightMin) / (this.camera.position.y - this.boundingHeightMin)) < 0) return;
+			|| ((nextCameraPosition.y - this.groundPlane) / (this.camera.position.y - this.groundPlane)) < 0) return;
 
 		this.camera.position.copy(nextCameraPosition);
 		this.camera.updateProjectionMatrix();
@@ -534,7 +525,7 @@ export class WorldInHandControls extends EventTarget {
 		const box = new Box3().setFromObject(this.actualScene, true);
 		box.getBoundingSphere(this.boundingSphere);
 		this.maxPanZoomDistance = this.boundingSphere.radius * 5;
-		this.boundingHeightMin = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+		this.groundPlane = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
 		this.updateFurthestSceneDepth();
 	}
@@ -657,4 +648,12 @@ export class WorldInHandControls extends EventTarget {
 	public set rotateAroundMousePosition(value: boolean) {
 		this._rotateAroundMousePosition = value;
 	}
+
+	/**
+	 * The visualiser to use for debugging.
+	 */
+	public set worldInHandControlsVisualiser(visualiser: WorldInHandControlsVisualiser) {
+		this._visualiser = visualiser;
+	}
+	
 }
