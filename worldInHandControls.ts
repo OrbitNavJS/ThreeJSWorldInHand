@@ -23,7 +23,6 @@ export class WorldInHandControls extends EventTarget {
 	/**
 	 * Render whatever you actually want to navigate on into this RenderTarget.
 	 */
-	
 	readonly navigationRenderTarget: WebGLRenderTarget;
 	protected domElement: HTMLCanvasElement;
 	protected renderer: WebGLRenderer;
@@ -72,6 +71,7 @@ export class WorldInHandControls extends EventTarget {
 	protected boundingDepthNDC!: number;
 	protected sceneBackPoint = new Vector3();
 	protected boundingSphere = new Sphere();
+	protected nearPlane = new Plane();
 	
 	/*
 	Debug
@@ -155,17 +155,21 @@ export class WorldInHandControls extends EventTarget {
 	Actual navigation
 	 */
 
-	protected zoom(amount: number): void {
+	protected zoom(direction: number): void {
 		this.zoomDirection.copy(this.mouseWorldPosition).sub(this.camera.position);
 
 		// prevent zooms that put geometry between camera near plane and camera
-		const zoomAmount = this.zoomDirection.length();
-		const nearPlaneRatio = this.camera.near * 1.1 / zoomAmount;
-		this.zoomDirection.multiplyScalar(1 - nearPlaneRatio);
+		const cameraZAxisWorld = new Vector3(0, 0, 1).unproject(this.camera).normalize();
+		this.nearPlane.setFromNormalAndCoplanarPoint(cameraZAxisWorld, this.camera.position.clone().addScaledVector(cameraZAxisWorld, this.camera.near * 1.1));
+
+		const distanceToNearPlane = this.nearPlane.distanceToPoint(this.mouseWorldPosition);
+
+		const nearPlaneRatio = distanceToNearPlane / this.zoomDirection.length();
+		this.zoomDirection.multiplyScalar(nearPlaneRatio);
 
 		// make zooming in, then zooming out have the same camera distance as before
-		if (amount < 0) this.zoomDirection.multiplyScalar(0.33 * amount);
-		else this.zoomDirection.multiplyScalar(0.25 * amount);
+		if (direction < 0) this.zoomDirection.multiplyScalar(0.33 * direction);
+		else this.zoomDirection.multiplyScalar(0.25 * direction);
 
 		// prevent zooming scene too far away
 		const nextCameraPosition = this.camera.position.clone().add(this.zoomDirection);
