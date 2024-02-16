@@ -1,23 +1,44 @@
 {
-  "name": "threejs-starter-vite",
-  "private": true,
-  "version": "1.0.0",
+  "name": "@world-in-hand-controls/threejs-world-in-hand",
+  "private": false,
+  "version": "0.0.1",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
-  },
   "devDependencies": {
-    "@types/three": "^0.158.2",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
+    "@types/three": "^0.161.2",
+    "@typescript-eslint/eslint-plugin": "^7.0.1",
+    "@typescript-eslint/parser": "^7.0.1",
     "eslint": "^8.56.0",
-    "typescript": "^5.2.2",
-    "vite": "^4.5.0"
+    "lil-gui": "^0.19.1",
+    "three": "^0.161.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.1.3",
+    "vite-plugin-dts": "^3.7.2"
   },
   "dependencies": {
-    "lil-gui": "^0.19.1",
-    "three": "^0.158.0"
-  }
+    "lil-gui": "^0.19.1"
+  },
+  "description": "A navigation class for three.js implementing world-in-hand navigation.",
+  "main": "dist/three-world-in-hand-controls.js",
+  "types": "dist/worldInHandControls.d.ts",
+  "files": [
+    "dist"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OrbitNavJS/ThreeJSWorldInHand.git"
+  },
+  "keywords": [
+    "navigation",
+    "world-in-hand",
+    "three",
+    "threejs",
+    "three.js",
+    "typescript"
+  ],
+  "bugs": {
+    "url": "https://github.com/OrbitNavJS/ThreeJSWorldInHand/issues"
+  },
+  "homepage": "https://github.com/OrbitNavJS/ThreeJSWorldInHand#readme"
 }

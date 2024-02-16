@@ -11,7 +11,7 @@ import {
 	WebGLRenderer,
 	DirectionalLight
 } from 'three';
-import { WorldInHandControls } from '../worldInHandControls';
+import { WorldInHandControls } from './worldInHandControls';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import { toggleFullScreen } from './helpers/fullscreen';
 import './style.css';

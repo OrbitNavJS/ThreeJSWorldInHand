@@ -16,7 +16,7 @@
     "noImplicitAny": true,
     "noUnusedParameters": false,
     "preserveConstEnums": true,
-    "removeComments": false,
+    "removeComments": true,
     "skipLibCheck": true
   },
   "files": [
@@ -24,7 +24,7 @@
   ],
   "include": [
     "source/**/*.ts"
-, "worldInHandControls.ts"  ],
+  ],
   "exclude": [
       "node_modules",
       "dist"

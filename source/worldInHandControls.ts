@@ -643,7 +643,7 @@ export class WorldInHandControls extends EventTarget {
 	/**
 	 * Whether to allow rotation of the camera below the xz-plane.
 	 */
-	public set allowRotationBelowScene(value: boolean) {
+	public set allowRotationBelowGroundPlane(value: boolean) {
 		this._allowRotationBelowGroundPlane = value;
 		this.setupMaxLowerRotationAngle();
 	}
