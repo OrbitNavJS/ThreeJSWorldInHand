@@ -1,21 +1,10 @@
 import GUI from 'lil-gui';
-import {
-	AmbientLight,
-	AxesHelper,
-	DirectionalLightHelper,
-	LoadingManager,
-	PCFSoftShadowMap,
-	PerspectiveCamera,
-	Scene,
-	Vector3,
-	WebGLRenderer,
-	DirectionalLight
-} from 'three';
-import { WorldInHandControls } from './worldInHandControls';
+import {AmbientLight, AxesHelper, DirectionalLight, DirectionalLightHelper, LoadingManager, PCFSoftShadowMap, PerspectiveCamera, Scene, SRGBColorSpace, Vector2, Vector3, WebGLRenderer} from 'three';
+import {WorldInHandControls} from './worldInHandControls';
 import Stats from 'three/examples/jsm/libs/stats.module';
-import { toggleFullScreen } from './helpers/fullscreen';
+import {toggleFullScreen} from './helpers/fullscreen';
 import './style.css';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
 
 const CANVAS_ID = 'scene';
@@ -50,11 +39,12 @@ function init() {
 	// ===== 🖼️ CANVAS, RENDERER, & SCENE =====
 	{
 		canvas = document.querySelector(`canvas#${CANVAS_ID}`)! as HTMLCanvasElement;
-		context = canvas.getContext('webgl2') as WebGL2RenderingContext;
-		renderer = new WebGLRenderer({ canvas, context, antialias: true, alpha: true, logarithmicDepthBuffer: false });
+		context = canvas.getContext('webgl2', {antialias: false}) as WebGL2RenderingContext;
+		renderer = new WebGLRenderer({ canvas, context, antialias: false, alpha: true, logarithmicDepthBuffer: false });
 		renderer.setPixelRatio(window.devicePixelRatio);
 		renderer.shadowMap.enabled = true;
 		renderer.shadowMap.type = PCFSoftShadowMap;
+		renderer.outputColorSpace = SRGBColorSpace
 
 		window.addEventListener('resize', () => { resizeRequested = true; requestUpdate();});
 
@@ -218,6 +208,9 @@ function animate() {
 		camera.aspect = canvas.clientWidth / canvas.clientHeight;
 		camera.updateProjectionMatrix();
 		renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+
+		console.log(canvas.clientWidth)
+
 		// @ts-expect-error three.js type definitions seem broken, this works.
 		scene.dispatchEvent({type: 'resize'});
 	}
@@ -225,9 +218,19 @@ function animate() {
 	if (cameraControls instanceof WorldInHandControls) {
 		renderer.setRenderTarget(cameraControls.navigationRenderTarget);
 		renderer.render(scene, camera);
+
+		const size = new Vector2(cameraControls.navigationRenderTarget.width, cameraControls.navigationRenderTarget.height);
+
+		const gl = renderer.getContext() as WebGL2RenderingContext;
+		const currentFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING);
+
+		gl.bindFramebuffer(gl.READ_FRAMEBUFFER, currentFramebuffer);
+		gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+
+		gl.blitFramebuffer(0, 0, size.x, size.y, 0, 0, size.x * renderer.getPixelRatio(), size.y * renderer.getPixelRatio(), gl.COLOR_BUFFER_BIT, gl.NEAREST);
 	}
-	renderer.setRenderTarget(null);
-	renderer.render(scene, camera);
+	/*renderer.setRenderTarget(null);
+	renderer.render(scene, camera);*/
 
 	cameraControls.update();
 }
