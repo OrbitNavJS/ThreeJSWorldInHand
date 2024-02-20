@@ -11,12 +11,13 @@ import {
 	WebGLRenderer,
 	DirectionalLight
 } from 'three';
-import { WorldInHandControls } from '../worldInHandControls';
+import { WorldInHandControls } from './worldInHandControls';
 import Stats from 'three/examples/jsm/libs/stats.module';
 import { toggleFullScreen } from './helpers/fullscreen';
 import './style.css';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
+import { WorldInHandControlsVisualiser } from './worldInHandControlsVisualiser';
 
 const CANVAS_ID = 'scene';
 
@@ -125,6 +126,10 @@ function init() {
 		cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
 		cameraControls.addEventListener('change', requestUpdate);
 		//cameraControls = new OrbitControls(camera, canvas);
+
+		const visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true);
+		cameraControls.worldInHandControlsVisualiser = visualiser;
+		scene.add(visualiser.group);
 
 		// Full screen
 		window.addEventListener('dblclick', (event) => {

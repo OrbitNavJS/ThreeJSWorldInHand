@@ -24,7 +24,6 @@ export class WorldInHandControls extends EventTarget {
 	/**
 	 * Render whatever you actually want to navigate on into this RenderTarget.
 	 */
-	
 	readonly navigationRenderTarget: WebGLRenderTarget;
 	protected domElement: HTMLCanvasElement;
 	protected renderer: WebGLRenderer;
@@ -78,7 +77,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected _visualiser: WorldInHandControlsDebugHelper | undefined;
+	protected _visualiser: WorldInHandControlsVisualiser | undefined;
 
 	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene) {
 		super();
@@ -323,6 +322,10 @@ export class WorldInHandControls extends EventTarget {
 		this.panStart.copy(this.mouseWorldPosition);
 		// use negative y to make plane have positive y
 		this.panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -this.panStart.y));
+
+		if (this._visualiser !== undefined) {
+			this._visualiser.update({ planeHeightGuideHeight: this.panStart.y });
+		}
 	}
 
 	protected handlePointerMovePanBound = this.handlePointerMovePan.bind(this);
@@ -476,6 +479,10 @@ export class WorldInHandControls extends EventTarget {
 		const clampedDepth = Math.min(depth, this.boundingDepthNDC);
 		this.mouseWorldPosition.set(this.mousePosition.x, this.mousePosition.y, clampedDepth);
 		this.mouseWorldPosition.unproject(this.camera);
+
+		if (this._visualiser !== undefined){
+			this._visualiser.update({ mouseWorldPosition: this.mouseWorldPosition });
+		}
 	}
 
 	/**
@@ -528,6 +535,10 @@ export class WorldInHandControls extends EventTarget {
 		this.groundPlane = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
 		this.updateFurthestSceneDepth();
+
+		if(this._visualiser !== undefined) {
+			this._visualiser.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlane });
+		}
 	}
 
 	/**
@@ -546,6 +557,10 @@ export class WorldInHandControls extends EventTarget {
 		const direction = new Vector3(0, 0, 1).unproject(this.camera).normalize();
 		this.sceneBackPoint.copy(this.boundingSphere.center.clone().addScaledVector(direction, this.boundingSphere.radius));
 		this.boundingDepthNDC = this.sceneBackPoint.clone().project(this.camera).z;
+
+		if (this._visualiser !== undefined) {
+			this._visualiser.update({ backPlaneAnchor: this.sceneBackPoint });
+		}
 	}
 
 	/*
