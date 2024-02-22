@@ -39,5 +39,9 @@
   "bugs": {
     "url": "https://github.com/OrbitNavJS/ThreeJSWorldInHand/issues"
   },
-  "homepage": "https://github.com/OrbitNavJS/ThreeJSWorldInHand#readme"
+  "homepage": "https://github.com/OrbitNavJS/ThreeJSWorldInHand#readme",
+  "scripts": {
+    "build": "vite build --mode production",
+    "lib": "vite build --mode library"
+  }
 }
