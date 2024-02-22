@@ -17,7 +17,7 @@ export type UpdateData = {
 	groundPlaneHeight?: number,
 	backPlaneAnchor?: Vector3,
 	boundingSphere?: Sphere,
-	planeHeightGuideHeight?: number
+	panHeightGuideHeight?: number
 }
 
 export type VisibilitySetters = {
@@ -25,7 +25,7 @@ export type VisibilitySetters = {
 	showGroundPlane?: boolean,
 	showBackPlane?: boolean,
 	showBoundingSphere?: boolean,
-	showPlaneHeightGuide?: boolean
+	showPanHeightGuide?: boolean
 }
 
 export class WorldInHandControlsVisualiser {
@@ -34,31 +34,33 @@ export class WorldInHandControlsVisualiser {
 	/**
 	 * Toggle visibility of debug visualisers
 	 */
-	protected _showMouseWorldPosition: boolean;
-	protected _showGroundPlane: boolean;
-	protected _showBackPlane: boolean;
-	protected _showBoundingSphere: boolean;
-	protected _showPlaneHeightGuide: boolean;
+	protected _showMouseWorldPosition: boolean = false;
+	protected _showGroundPlane: boolean = false;
+	protected _showBackPlane: boolean = false;
+	protected _showBoundingSphere: boolean = false;
+	protected _showPanHeightGuide: boolean = false;
 
 	/**
 	 * Scene objects
 	 */
 	protected mouseWorldPosition: Mesh;
 	protected groundPlane: Mesh;
-	protected backPlane: PlaneHelper;
+	protected backPlane: Mesh;
 	protected boundingSphere: Mesh;
-	protected planeHeightGuide: Mesh;
+	protected panHeightGuide: Mesh;
 
 	readonly group: Group;
 
-	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showPlaneHeightGuide?: boolean) {
+	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showPanHeightGuide?: boolean) {
 		this.camera = camera;
 
 		/** Create basic scene objects */
 		this.group = new Group();
+		// ensure correct render order
+		this.group.renderOrder = Number.MAX_SAFE_INTEGER;
 		{
 			const mouseWorldGeometry = new SphereGeometry(1);
-			const mouseWorldMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide });
+			const mouseWorldMaterial = new MeshBasicMaterial({ color: 0x0000ff, side: DoubleSide, transparent: true });
 			mouseWorldMaterial.depthWrite = false;
 			mouseWorldMaterial.stencilWrite = false;
 			this.mouseWorldPosition = new Mesh(mouseWorldGeometry, mouseWorldMaterial);
@@ -66,7 +68,8 @@ export class WorldInHandControlsVisualiser {
 
 		{
 			const groundPlaneGeometry = new PlaneGeometry();
-			const groundPlaneMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide});
+			groundPlaneGeometry.rotateX(Math.PI / 2);
+			const groundPlaneMaterial = new MeshBasicMaterial({ color: 0xff0000, side: DoubleSide, transparent: true});
 			groundPlaneMaterial.depthWrite = false;
 			groundPlaneMaterial.stencilWrite = false;
 			this.groundPlane = new Mesh(groundPlaneGeometry, groundPlaneMaterial);
@@ -74,23 +77,24 @@ export class WorldInHandControlsVisualiser {
 
 		{
 			const heightGuideGeometry = new PlaneGeometry();
-			const heightGuideMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide  });
+			heightGuideGeometry.rotateX(Math.PI / 2);
+			const heightGuideMaterial = new MeshBasicMaterial({ color: 0x00ff00, side: DoubleSide, transparent: true });
 			heightGuideMaterial.depthWrite = false;
 			heightGuideMaterial.stencilWrite = false;
-			this.planeHeightGuide = new Mesh(heightGuideGeometry, heightGuideMaterial);
+			this.panHeightGuide = new Mesh(heightGuideGeometry, heightGuideMaterial);
 		}
 
 		{
-			const actualBackPlane = new Plane(new Vector3(0, 0, 1).unproject(camera).normalize(), 0);
-			const backPlaneMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide  });
+			const backPlaneMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide, transparent: true });
+			const backPlaneGeometry = new PlaneGeometry();
 			backPlaneMaterial.depthWrite = false;
 			backPlaneMaterial.stencilWrite = false;
-			this.backPlane = new PlaneHelper(actualBackPlane);
+			this.backPlane = new Mesh(backPlaneGeometry, backPlaneMaterial);
 		}
 
 		{
 			const boundingSphereGeometry = new SphereGeometry();
-			const boundingSphereMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide  });
+			const boundingSphereMaterial = new MeshBasicMaterial({ color: 0xffffff, side: DoubleSide});
 			boundingSphereMaterial.depthWrite = false;
 			boundingSphereMaterial.stencilWrite = false;
 			boundingSphereMaterial.wireframe = true;
@@ -102,12 +106,14 @@ export class WorldInHandControlsVisualiser {
 		this.showGroundPlane = (showGroundPlane !== undefined) ? showGroundPlane : false;
 		this.showBackPlane = (showBackPlane !== undefined) ? showBackPlane : false;
 		this.showBoundingSphere = (showBoundingSphere !== undefined) ? showBoundingSphere : false;
-		this.showPlaneHeightGuide = (showPlaneHeightGuide !== undefined) ? showPlaneHeightGuide : false;
+		this.showPanHeightGuide = (showPanHeightGuide !== undefined) ? showPanHeightGuide : false;
 	}
 
 	public update(data: UpdateData) {
 		if (data.mouseWorldPosition) {
 			this.mouseWorldPosition.position.copy(data.mouseWorldPosition);
+			this.panHeightGuide.position.setX(data.mouseWorldPosition.x);
+			this.panHeightGuide.position.setZ(data.mouseWorldPosition.z);
 		}
 
 		if (data.groundPlaneHeight) {
@@ -115,9 +121,13 @@ export class WorldInHandControlsVisualiser {
 		}
 
 		if (data.backPlaneAnchor) {
+			debugger
+
 			const normal = new Vector3(0, 0, 1).unproject(this.camera).normalize();
 			const actualBackPlane = new Plane().setFromNormalAndCoplanarPoint(normal, data.backPlaneAnchor);
-			this.backPlane = new PlaneHelper(actualBackPlane);
+			this.backPlane.position.set(0, 0, 0);
+			this.backPlane.lookAt(actualBackPlane.normal);
+			this.backPlane.translateZ(-actualBackPlane.constant);
 		}
 
 		if (data.boundingSphere) {
@@ -125,9 +135,20 @@ export class WorldInHandControlsVisualiser {
 			this.boundingSphere.scale.set(data.boundingSphere.radius, data.boundingSphere.radius, data.boundingSphere.radius);
 		}
 
-		if (data.planeHeightGuideHeight) {
-			this.planeHeightGuide.position.set(0, data.planeHeightGuideHeight, 0);
+		if (data.panHeightGuideHeight) {
+			this.panHeightGuide.position.set(0, data.panHeightGuideHeight, 0);
 		}
+	}
+	
+	public dispose(){
+		this.setVisibility({
+			showMouseWorldPosition: false,
+			showGroundPlane: false,
+			showBackPlane: false,
+			showBoundingSphere: false,
+			showPanHeightGuide: false
+		
+		});
 	}
 
 	public setVisibility(visibilities: VisibilitySetters) {
@@ -135,7 +156,7 @@ export class WorldInHandControlsVisualiser {
 		if (visibilities.showBackPlane) this.showBackPlane = visibilities.showBackPlane;
 		if (visibilities.showBoundingSphere) this.showBoundingSphere = visibilities.showBoundingSphere;
 		if (visibilities.showGroundPlane) this.showGroundPlane = visibilities.showGroundPlane;
-		if (visibilities.showPlaneHeightGuide) this.showPlaneHeightGuide = visibilities.showPlaneHeightGuide;
+		if (visibilities.showPanHeightGuide) this.showPanHeightGuide = visibilities.showPanHeightGuide;
 	}
 		
 	/**
@@ -178,12 +199,76 @@ export class WorldInHandControlsVisualiser {
 		else this.group.remove(this.boundingSphere);
 	}
 
-	public set showPlaneHeightGuide(value: boolean) {
-		if (this.showPlaneHeightGuide === value) return;
+	public set showPanHeightGuide(value: boolean) {
+		if (this.showPanHeightGuide === value) return;
 
-		this._showPlaneHeightGuide = value;
+		this._showPanHeightGuide = value;
 
-		if (value) this.group.add(this.planeHeightGuide);
-		else this.group.remove(this.planeHeightGuide);
+		if (value) this.group.add(this.panHeightGuide);
+		else this.group.remove(this.panHeightGuide);
+	}
+
+	/**
+	 * Scale setters
+	 */
+
+	public set mouseWorldPositionSize(value: number) {
+		this.mouseWorldPosition.scale.set(value, value, value);
+	}
+
+	public set panHeightGuideSize(value: number) {
+		this.panHeightGuide.scale.set(value, value, value);
+	}
+
+	public set groundPlaneSize(value: number) {
+		this.groundPlane.scale.set(value, value, value);
+	}
+	
+	public set backPlaneSize(value: number) {
+		this.backPlane.scale.set(value, value, value);
+	}
+
+	/**
+	 * Color setters
+	 */
+	
+	public set mouseWorldPositionColor(value: number){
+		(this.mouseWorldPosition.material as MeshBasicMaterial).color.set(value);
+	}
+
+	public set groundPlaneColor(value: number){
+		(this.groundPlane.material as MeshBasicMaterial).color.set(value);
+	}
+
+	public set backPlaneColor(value: number){
+		(this.backPlane.material as MeshBasicMaterial).color.set(value);
+	}
+
+	public set panHeightGuideColor(value: number){
+		(this.panHeightGuide.material as MeshBasicMaterial).color.set(value);
+	}
+
+	public set boundingSphereColor(value: number){
+		(this.boundingSphere.material as MeshBasicMaterial).color.set(value);
+	}
+
+	/**
+	 * Opacity setters
+	 */
+
+	public set mouseWorldPositionOpacity(value: number){
+		(this.mouseWorldPosition.material as MeshBasicMaterial).opacity = value;
+	}
+
+	public set groundPlaneOpacity(value: number){
+		(this.groundPlane.material as MeshBasicMaterial).opacity = value;
+	}
+
+	public set backPlaneOpacity(value: number){
+		(this.backPlane.material as MeshBasicMaterial).opacity = value;
+	}
+
+	public set panHeightGuideOpacity(value: number){
+		(this.panHeightGuide.material as MeshBasicMaterial).opacity = value;
 	}
 }

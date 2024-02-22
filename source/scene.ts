@@ -34,6 +34,7 @@ let cameraControls: WorldInHandControls | OrbitControls;
 let axesHelper: AxesHelper;
 let stats: Stats;
 let gui: GUI;
+let visualiser: WorldInHandControlsVisualiser;
 
 let updateRequested = false;
 let resizeRequested = true;
@@ -92,6 +93,31 @@ function init() {
 		scene.add(directionalLight);
 	}
 
+	// ===== 🎥 CAMERA =====
+	{
+		camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+		camera.position.set(14,5, 4);
+		//camera.position.set(0, 0, 15);
+		camera.lookAt(new Vector3(0, 0, 0));
+	}
+
+	// ===== 🕹️ CONTROLS =====
+	{
+		cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
+		cameraControls.addEventListener('change', requestUpdate);
+		//cameraControls = new OrbitControls(camera, canvas);
+
+		visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true);
+		cameraControls.worldInHandControlsVisualiser = visualiser;
+
+		// Full screen
+		window.addEventListener('dblclick', (event) => {
+			if (event.target === canvas) {
+				toggleFullScreen(canvas);
+			}
+		});
+	}
+
 	// ===== 📦 OBJECTS =====
 	{
 		// load city model
@@ -107,35 +133,11 @@ function init() {
 			// @ts-expect-error three.js type definitions seem broken, this works.
 			scene.dispatchEvent({type: 'change'});
 
+			scene.add(visualiser.group);
+
 			requestUpdate();
 		}, undefined, function ( error: unknown ) {
 			console.error( error );
-		});
-	}
-
-	// ===== 🎥 CAMERA =====
-	{
-		camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-		camera.position.set(14,5, 4);
-		//camera.position.set(0, 0, 15);
-		camera.lookAt(new Vector3(0, 0, 0));
-	}
-
-	// ===== 🕹️ CONTROLS =====
-	{
-		cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
-		cameraControls.addEventListener('change', requestUpdate);
-		//cameraControls = new OrbitControls(camera, canvas);
-
-		const visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true);
-		cameraControls.worldInHandControlsVisualiser = visualiser;
-		scene.add(visualiser.group);
-
-		// Full screen
-		window.addEventListener('dblclick', (event) => {
-			if (event.target === canvas) {
-				toggleFullScreen(canvas);
-			}
 		});
 	}
 
@@ -171,6 +173,7 @@ function init() {
 				}
 				cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
 				cameraControls.addEventListener('change', requestUpdate);
+				cameraControls.worldInHandControlsVisualiser = visualiser;
 				requestUpdate();
 			} else if (value === 'orbit') {
 				if (cameraControls !== undefined) {
@@ -189,6 +192,22 @@ function init() {
 
 		const helpersFolder = gui.addFolder('Helpers');
 		helpersFolder.add(axesHelper, 'visible').name('axes');
+
+		const worldInHandParameters = {
+			mouseSize: 1,
+			heightGuideSize: 1,
+			groundPlaneSize: 1,
+			backPlaneSize: 1,
+			panHeightGuideColor: '#00ff00',
+			panHeightGuideOpacity: 0.5,
+		}
+		const worldInHandFolder = helpersFolder.addFolder('WorldInHandHelper');
+		worldInHandFolder.add(worldInHandParameters, 'mouseSize', 0.001, 10).onChange((value: number) => { visualiser.mouseWorldPositionSize = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'groundPlaneSize', 0.001, 10).onChange((value: number) => { visualiser.groundPlaneSize = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'backPlaneSize', 0.001, 100).onChange((value: number) => { visualiser.backPlaneSize = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'heightGuideSize', 0.001, 10).onChange((value: number) => { visualiser.panHeightGuideSize = value; requestUpdate(); });
+		worldInHandFolder.addColor(worldInHandParameters, 'panHeightGuideColor').onChange((value: number) => { visualiser.panHeightGuideColor = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'panHeightGuideOpacity', 0, 1).onChange((value: number) => { visualiser.panHeightGuideOpacity = value; requestUpdate(); });
 
 		// persist GUI state in local storage on changes
 		gui.onFinishChange(() => {

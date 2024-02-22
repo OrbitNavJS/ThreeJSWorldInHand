@@ -324,7 +324,7 @@ export class WorldInHandControls extends EventTarget {
 		this.panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -this.panStart.y));
 
 		if (this._visualiser !== undefined) {
-			this._visualiser.update({ planeHeightGuideHeight: this.panStart.y });
+			this._visualiser.update({ panHeightGuideHeight: this.panStart.y });
 		}
 	}
 
