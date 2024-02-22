@@ -16,7 +16,10 @@ import {
 	Box3,
 	Sphere,
 	DepthFormat,
-	DepthTexture, SphereGeometry, MeshBasicMaterial
+	DepthTexture,
+	SphereGeometry,
+	MeshBasicMaterial,
+	Object3D
 } from 'three';
 
 export class WorldInHandControls extends EventTarget {
@@ -72,13 +75,16 @@ export class WorldInHandControls extends EventTarget {
 	protected sceneBackPoint = new Vector3();
 	protected boundingSphere = new Sphere();
 	protected nearPlane = new Plane();
-	
+
+	protected sceneHasMesh = false;
+	protected hasWarnedAboutEmptyScene = false;
+
 	/*
 	Debug
 	 */
 
 	protected debug = false;
-	
+
 	protected testSphereMesh: Mesh | undefined;
 
 	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene) {
@@ -146,7 +152,7 @@ export class WorldInHandControls extends EventTarget {
 			const testSphereGeometry = new SphereGeometry(0.25);
 			const testSphereMaterial = new MeshBasicMaterial();
 			this.testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
-			
+
 			this.actualScene.add(this.testSphereMesh);
 		}
 	}
@@ -233,19 +239,23 @@ export class WorldInHandControls extends EventTarget {
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
 	}
-	
+
 	/*
 	Event handlers
 	 */
 
 	protected onMouseWheelBound = this.onMouseWheel.bind(this);
 	protected onMouseWheel(event: WheelEvent): void {
+		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
+
 		event.preventDefault();
 		this.handleMouseWheel( event );
 	}
 
 	protected onPointerDownBound = this.onPointerDown.bind(this);
 	protected onPointerDown(event: PointerEvent): void {
+		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
+
 		this.domElement.removeEventListener('pointermove', this.handlePointerMovePanBound);
 		this.domElement.removeEventListener('pointermove', this.handlePointerMoveRotateBound);
 		this.domElement.removeEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
@@ -257,29 +267,29 @@ export class WorldInHandControls extends EventTarget {
 			this.trackPointer(event);
 
 			switch (this.pointers.length) {
-			case 1:
-				this.handlePointerDownPan(event);
-				this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
-				break;
-			case 2:
-				this.handlePointerDownRotate(event);
-				// no special handling for touch down zoom required
-				this.domElement.addEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
-				break;
+				case 1:
+					this.handlePointerDownPan(event);
+					this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
+					break;
+				case 2:
+					this.handlePointerDownRotate(event);
+					// no special handling for touch down zoom required
+					this.domElement.addEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
+					break;
 			}
 		} else {
 			switch (event.button) {
-			// left mouse
-			case 0:
-				this.handlePointerDownRotate(event);
-				this.domElement.addEventListener('pointermove', this.handlePointerMoveRotateBound);
-				break;
+				// left mouse
+				case 0:
+					this.handlePointerDownRotate(event);
+					this.domElement.addEventListener('pointermove', this.handlePointerMoveRotateBound);
+					break;
 
 				// right mouse
-			case 2:
-				this.handlePointerDownPan(event);
-				this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
-				break;
+				case 2:
+					this.handlePointerDownPan(event);
+					this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
+					break;
 			}
 		}
 	}
@@ -463,7 +473,7 @@ export class WorldInHandControls extends EventTarget {
 		this.depthBufferRenderTarget.setSize(size.x, size.y);
 		this.navigationRenderTarget.setSize(size.x, size.y);
 	}
-	
+
 	/*
 	World in hand helpers
 	 */
@@ -513,18 +523,20 @@ export class WorldInHandControls extends EventTarget {
 
 		return linearDepth;
 	}
-	
+
 	/*
 	Resiliency helpers
 	 */
-	
+
 	/**
 	 * Sets up all resiliency options according to the set flags.
 	 */
-	public setupResiliency(): void {
+	protected setupResiliency(): void {
+		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resiliency!');
+
 		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt).angleTo(new Vector3(0, 1, 0));
 		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
-		
+
 		this.setupMaxLowerRotationAngle();
 		this.setupBoundingSphere();
 	}
@@ -535,8 +547,16 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected setupBoundingSphere(): void {
+		this.actualScene.traverse((object: Object3D) => {
+			if (this.sceneHasMesh) return;
+			else if (object instanceof Mesh) this.sceneHasMesh = true;
+		});
+
 		const box = new Box3().setFromObject(this.actualScene, true);
 		box.getBoundingSphere(this.boundingSphere);
+
+		if (this.boundingSphere.radius <= 0 && this.sceneHasMesh) console.warn('Could not calculate a valid bounding sphere for the given scene. This may break the navigation.');
+
 		this.maxPanZoomDistance = this.boundingSphere.radius * 5;
 		this.boundingHeightMin = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
@@ -561,10 +581,17 @@ export class WorldInHandControls extends EventTarget {
 		this.boundingDepthNDC = this.sceneBackPoint.clone().project(this.camera).z;
 	}
 
+	protected warnAboutEmptyScene(): void {
+		if (this.hasWarnedAboutEmptyScene) return;
+
+		this.hasWarnedAboutEmptyScene = true;
+		console.warn('The given scene is empty, or was empty at WorldInHandControls creation. This breaks the navigation. If you have added things to the scene since then, dispatch a "change" event on the given scene.');
+	}
+
 	/*
 	Pointer helpers
 	 */
-	
+
 	/**
 	 * Tracks up to two pointers. Expressly ignores any additional pointers.
 	 * @param event The event to possibly track.
