@@ -1,4 +1,4 @@
-import {Box3, DepthFormat, DepthTexture, FloatType, SRGBColorSpace, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Plane, PlaneGeometry, Ray, RGBAFormat, Scene, ShaderMaterial, Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget} from 'three';
+import {Box3, DepthFormat, DepthTexture, FloatType, Matrix4, Mesh, MeshBasicMaterial, PerspectiveCamera, Plane, PlaneGeometry, Ray, RGBAFormat, Scene, ShaderMaterial, Sphere, SphereGeometry, SRGBColorSpace, UnsignedByteType, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget} from 'three';
 
 export class WorldInHandControls extends EventTarget {
 	/**
@@ -73,10 +73,9 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(0, 0, 0);
 
-		this.navigationRenderTarget = new WebGLRenderTarget(1, 1, {colorSpace: SRGBColorSpace});
+		this.navigationRenderTarget = new WebGLRenderTarget(1, 1, {colorSpace: SRGBColorSpace, samples: 16, format: RGBAFormat, type: UnsignedByteType, internalFormat: 'RGBA8'});
 		this.navigationRenderTarget.depthTexture = new DepthTexture(1, 1, FloatType);
 		this.navigationRenderTarget.depthTexture.format = DepthFormat;
-		this.navigationRenderTarget.samples = 0;
 
 		this.depthBufferRenderTarget = new WebGLRenderTarget(1, 1, {format: RGBAFormat, type: FloatType});
 		this.updateRenderTargets();
@@ -377,7 +376,7 @@ export class WorldInHandControls extends EventTarget {
 		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
 		this.renderer.render(this.depthBufferScene, this.camera);
 
-		/*xz-plane
+		/*
 		// SHOW FRAMEBUFFER
 		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
 		this.renderer.render(this.depthBufferScene, this.camera);
@@ -417,7 +416,7 @@ export class WorldInHandControls extends EventTarget {
 		}
 
 		(canvas2.getContext('2d') as CanvasRenderingContext2D).putImageData(imageData, 0, 0);
-		 */
+		*/
 	}
 
 	/**

@@ -40,11 +40,13 @@ function init() {
 	{
 		canvas = document.querySelector(`canvas#${CANVAS_ID}`)! as HTMLCanvasElement;
 		context = canvas.getContext('webgl2', {antialias: false}) as WebGL2RenderingContext;
-		renderer = new WebGLRenderer({ canvas, context, antialias: false, alpha: true, logarithmicDepthBuffer: false });
-		renderer.setPixelRatio(window.devicePixelRatio);
+
+		renderer = new WebGLRenderer({ canvas, context, antialias: false, alpha: true, logarithmicDepthBuffer: false, depth: true, stencil: false });
+		//renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setPixelRatio(1);
 		renderer.shadowMap.enabled = true;
 		renderer.shadowMap.type = PCFSoftShadowMap;
-		renderer.outputColorSpace = SRGBColorSpace
+		renderer.outputColorSpace = SRGBColorSpace;
 
 		window.addEventListener('resize', () => { resizeRequested = true; requestUpdate();});
 
@@ -209,28 +211,27 @@ function animate() {
 		camera.updateProjectionMatrix();
 		renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
 
-		console.log(canvas.clientWidth)
-
 		// @ts-expect-error three.js type definitions seem broken, this works.
 		scene.dispatchEvent({type: 'resize'});
 	}
 
 	if (cameraControls instanceof WorldInHandControls) {
-		renderer.setRenderTarget(cameraControls.navigationRenderTarget);
-		renderer.render(scene, camera);
-
 		const size = new Vector2(cameraControls.navigationRenderTarget.width, cameraControls.navigationRenderTarget.height);
 
 		const gl = renderer.getContext() as WebGL2RenderingContext;
+
+		renderer.setRenderTarget(cameraControls.navigationRenderTarget);
+		renderer.render(scene, camera);
+
 		const currentFramebuffer = gl.getParameter(gl.FRAMEBUFFER_BINDING);
 
-		gl.bindFramebuffer(gl.READ_FRAMEBUFFER, currentFramebuffer);
 		gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+		gl.bindFramebuffer(gl.READ_FRAMEBUFFER, currentFramebuffer);
 
-		gl.blitFramebuffer(0, 0, size.x, size.y, 0, 0, size.x * renderer.getPixelRatio(), size.y * renderer.getPixelRatio(), gl.COLOR_BUFFER_BIT, gl.NEAREST);
+		gl.blitFramebuffer(0, 0, size.x, size.y, 0, 0, size.x, size.y, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+
+		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 	}
-	/*renderer.setRenderTarget(null);
-	renderer.render(scene, camera);*/
 
 	cameraControls.update();
 }
