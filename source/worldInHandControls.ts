@@ -72,7 +72,7 @@ export class WorldInHandControls extends EventTarget {
 	protected angleToYAxis!: number;
 	protected maxLowerRotationAngle!: number;
 	protected maxPanZoomDistance!: number;
-	protected boundingHeightMin!: number;
+	protected groundPlane!: number;
 	protected boundingDepthNDC!: number;
 	protected sceneBackPoint = new Vector3();
 	protected boundingSphere = new Sphere();
@@ -208,7 +208,7 @@ export class WorldInHandControls extends EventTarget {
 		const nextCameraPosition = this.camera.position.clone().add(this.zoomDirection);
 		if (nextCameraPosition.length() > this.maxPanZoomDistance
 			// prevent zoom through ground plane
-			|| ((nextCameraPosition.y - this.boundingHeightMin) / (this.camera.position.y - this.boundingHeightMin)) < 0) return;
+			|| ((nextCameraPosition.y - this.groundPlane) / (this.camera.position.y - this.groundPlane)) < 0) return;
 
 		this.camera.position.copy(nextCameraPosition);
 		this.camera.updateProjectionMatrix();
@@ -492,6 +492,26 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.removeEventListener( 'contextmenu', this.preventContextMenu);
 	}
 
+	/**
+	* Reloads the camera's look at position. If cameraLookAt is not provided, the look at position is set to the center of the bounding sphere.
+	* @param cameraLookAt The new look at position of the camera.
+	*/
+	public reloadCamera(cameraLookAt?: Vector3): void {
+		if (cameraLookAt !== undefined) {
+			this.cameraLookAt = cameraLookAt;
+		} else {
+			const lookAtRay = new Ray(this.camera.position, new Vector3(0, 0, 1).unproject(this.camera).normalize());
+			const groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlane);
+
+			if (lookAtRay.intersectPlane(groundPlane, this.cameraLookAt) === null) {
+				this.cameraLookAt.copy(this.boundingSphere.center);
+				console.warn('Could not find a valid look at position for the camera. Using the center of the bounding sphere instead.');
+			}
+		}
+
+		this.camera.lookAt(this.cameraLookAt);
+	}
+
 	protected updateRenderTargetsBound = this.updateRenderTargets.bind(this);
 	/**
 	 * Resizes all RenderTargets to the current dimensions of renderer.
@@ -588,7 +608,7 @@ export class WorldInHandControls extends EventTarget {
 		if (this.boundingSphere.radius <= 0 && this.sceneHasMesh) console.warn('Could not calculate a valid bounding sphere for the given scene. This may break the navigation.');
 
 		this.maxPanZoomDistance = this.boundingSphere.radius * 5;
-		this.boundingHeightMin = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+		this.groundPlane = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
 		this.updateFurthestSceneDepth();
 	}
