@@ -225,9 +225,10 @@ function animate() {
 	if (cameraControls instanceof WorldInHandControls) {
 		renderer.setRenderTarget(cameraControls.navigationRenderTarget);
 		renderer.render(scene, camera);
+	} else {
+		renderer.setRenderTarget(null);
+		renderer.render(scene, camera);
 	}
-	renderer.setRenderTarget(null);
-	renderer.render(scene, camera);
 
 	cameraControls.update();
 }

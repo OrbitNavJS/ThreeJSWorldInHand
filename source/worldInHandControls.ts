@@ -33,9 +33,11 @@ export class WorldInHandControls extends EventTarget {
 
 	protected camera: PerspectiveCamera;
 	protected depthBufferScene: Scene;
+	protected copyPlaneScene: Scene;
 	protected depthBufferRenderTarget: WebGLRenderTarget;
 
 	protected depthBufferPlaneMaterial: ShaderMaterial;
+	protected copyPlaneMaterial: ShaderMaterial;
 
 	/*
 	Navigation state
@@ -87,7 +89,14 @@ export class WorldInHandControls extends EventTarget {
 
 	protected testSphereMesh: Mesh | undefined;
 
-	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene) {
+	/**
+	 * @param camera The camera to navigate.
+	 * @param domElement The canvas to listen for events on.
+	 * @param renderer The renderer to render with.
+	 * @param scene The scene to navigate in.
+	 * @param msaaSamples The number of samples for the navigationRenderTarget. Default is 4.
+	 */
+	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene, msaaSamples: number = 4) {
 		super();
 
 		this.camera = camera;
@@ -98,14 +107,12 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(0, 0, 0);
 
-		this.navigationRenderTarget = new WebGLRenderTarget(1, 1);
+		this.navigationRenderTarget = new WebGLRenderTarget(1, 1, { samples: msaaSamples });
 		this.navigationRenderTarget.depthTexture = new DepthTexture(1, 1, FloatType);
 		this.navigationRenderTarget.depthTexture.format = DepthFormat;
 
 		this.depthBufferRenderTarget = new WebGLRenderTarget(1, 1, {format: RGBAFormat, type: FloatType});
 		this.updateRenderTargets();
-
-		this.depthBufferScene = new Scene();
 
 		{
 			const planeVertexShader = `
@@ -117,7 +124,7 @@ export class WorldInHandControls extends EventTarget {
 			}
 			`;
 
-			const planeFragmentShader = `
+			const depthPlaneFragmentShader = `
 			varying vec2 vUV;
 			uniform sampler2D uDepthTexture;
 			
@@ -126,16 +133,36 @@ export class WorldInHandControls extends EventTarget {
 			}
 			`;
 
+			const copyPlaneFragmentShader = `
+			varying vec2 vUV;
+			uniform sampler2D uColorTexture;
+			
+			void main() {
+				gl_FragColor = LinearTosRGB(texture(uColorTexture, vUV));
+			}
+			`;
+
 			const planeGeometry = new PlaneGeometry(2, 2);
 
 			this.depthBufferPlaneMaterial = new ShaderMaterial();
 			this.depthBufferPlaneMaterial.vertexShader = planeVertexShader;
-			this.depthBufferPlaneMaterial.fragmentShader = planeFragmentShader;
+			this.depthBufferPlaneMaterial.fragmentShader = depthPlaneFragmentShader;
 
 			const depthBufferPlane = new Mesh(planeGeometry, this.depthBufferPlaneMaterial);
 			depthBufferPlane.frustumCulled = false;
 
+			this.depthBufferScene = new Scene();
 			this.depthBufferScene.add(depthBufferPlane);
+
+			this.copyPlaneMaterial = new ShaderMaterial();
+			this.copyPlaneMaterial.vertexShader = planeVertexShader;
+			this.copyPlaneMaterial.fragmentShader = copyPlaneFragmentShader;
+
+			const copyPlane = new Mesh(planeGeometry, this.copyPlaneMaterial);
+			copyPlane.frustumCulled = false;
+			
+			this.copyPlaneScene = new Scene();
+			this.copyPlaneScene.add(copyPlane);
 		}
 
 		this.setupResiliency();
@@ -267,29 +294,29 @@ export class WorldInHandControls extends EventTarget {
 			this.trackPointer(event);
 
 			switch (this.pointers.length) {
-				case 1:
-					this.handlePointerDownPan(event);
-					this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
-					break;
-				case 2:
-					this.handlePointerDownRotate(event);
-					// no special handling for touch down zoom required
-					this.domElement.addEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
-					break;
+			case 1:
+				this.handlePointerDownPan(event);
+				this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
+				break;
+			case 2:
+				this.handlePointerDownRotate(event);
+				// no special handling for touch down zoom required
+				this.domElement.addEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
+				break;
 			}
 		} else {
 			switch (event.button) {
-				// left mouse
-				case 0:
-					this.handlePointerDownRotate(event);
-					this.domElement.addEventListener('pointermove', this.handlePointerMoveRotateBound);
-					break;
+			// left mouse
+			case 0:
+				this.handlePointerDownRotate(event);
+				this.domElement.addEventListener('pointermove', this.handlePointerMoveRotateBound);
+				break;
 
-				// right mouse
-				case 2:
-					this.handlePointerDownPan(event);
-					this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
-					break;
+			// right mouse
+			case 2:
+				this.handlePointerDownPan(event);
+				this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
+				break;
 			}
 		}
 	}
@@ -315,7 +342,6 @@ export class WorldInHandControls extends EventTarget {
 
 		this.zoom(-(event.deltaY / Math.abs(event.deltaY)));
 
-		this.update();
 		this.dispatchEvent(new Event('change'));
 	}
 
@@ -335,7 +361,6 @@ export class WorldInHandControls extends EventTarget {
 		this.rotate(this.rotateDelta);
 
 		this.rotateStart.copy(this.rotateEnd);
-		this.update();
 		this.dispatchEvent(new Event('change'));
 	}
 
@@ -360,7 +385,6 @@ export class WorldInHandControls extends EventTarget {
 
 		this.pan(panCurrent.clone().sub(this.panStart));
 
-		this.update();
 		this.dispatchEvent(new Event('change'));
 	}
 
@@ -399,13 +423,19 @@ export class WorldInHandControls extends EventTarget {
 
 	/**
 	 * Updates the navigation with the current data in navigationRenderTarget.
+	 * @param copyToCanvas Whether to copy the navigationRenderTarget to the canvas.
 	 */
-	public update(): void {
+	public update(copyToCanvas: boolean = true): void {
 		this.depthBufferPlaneMaterial.uniforms = { uDepthTexture: { value: this.navigationRenderTarget.depthTexture } };
 		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
 		this.renderer.render(this.depthBufferScene, this.camera);
 
-		/*xz-plane
+		if (!copyToCanvas) return;
+		this.copyPlaneMaterial.uniforms = { uColorTexture: { value: this.navigationRenderTarget.texture } };
+		this.renderer.setRenderTarget(null);
+		this.renderer.render(this.copyPlaneScene, this.camera);
+
+		/*
 		// SHOW FRAMEBUFFER
 		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
 		this.renderer.render(this.depthBufferScene, this.camera);
@@ -468,7 +498,7 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected updateRenderTargets(): void {
-		const size = this.renderer.getSize(new Vector2);
+		const size = this.renderer.getSize(new Vector2).multiplyScalar(this.renderer.getPixelRatio());
 
 		this.depthBufferRenderTarget.setSize(size.x, size.y);
 		this.navigationRenderTarget.setSize(size.x, size.y);
