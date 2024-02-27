@@ -24,10 +24,23 @@ div.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(75, div.clientWidth / div.clientHeight, 0.1, 1000);
+// Camera position may NOT be (0, 0, 0).
 camera.position.set(0, 1, 1);
 
-// WorldInHandControls will NOT change your scene
-const controls = new WorldInHandControls(camera, renderer.domElement, renderer, scene);
+/*
+WorldInHandControls will NOT change your scene.
+The last parameter dictates the amount of MSAA samples to use in the navigationRenderTarget.
+If no value is passed, this defaults to 4. Pass 0 to disable anti-aliasing.
+For more information, look up:
+https://threejs.org/docs/#api/en/renderers/WebGLRenderTarget.samples
+ */
+const controls = new WorldInHandControls(camera, renderer.domElement, renderer, scene, 16);
+
+/*
+We recommend not manually changing anything about the camera after creating WorldInHandControls.
+If you still change the camera, we recommend calling this. This should return the controls into a working state
+ */
+controls.reloadCamera();
 
 /*
 Resiliency configuration
@@ -65,12 +78,19 @@ function render() {
     renderer.setRenderTarget(controls.navigationRenderTarget);
     renderer.render(scene, camera);
 
-    // Call update whenever you have rendered something new into navigationRenderTarget
+    /*
+    Call update whenever you have rendered something new into navigationRenderTarget.
+    By default, this copies the content rendered into navigationRenderTarget onto the canvas.
+    This should always be faster than re-rendering the scene onto the canvas.
+    To explicitely disable this behaviour, call controls.update(false)
+     */
     controls.update();
 
-    // Render to the canvas
+    // Render to the canvas if you called controls.update(false)
+    /*
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
+    */
 }
 
 // Resize the renderer and WorldInHandControls on canvas resize
