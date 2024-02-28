@@ -106,9 +106,6 @@ function init() {
 			// @ts-expect-error three.js type definitions seem broken, this works.
 			scene.dispatchEvent({type: 'change'});
 
-			/*camera.position.add(new Vector3(50, 2, 0));
-			if (cameraControls instanceof WorldInHandControls) cameraControls.reloadCamera();*/
-
 			requestUpdate();
 		}, undefined, function ( error: unknown ) {
 			console.error( error );

@@ -94,9 +94,10 @@ export class WorldInHandControls extends EventTarget {
 	 * @param domElement The canvas to listen for events on.
 	 * @param renderer The renderer to render with.
 	 * @param scene The scene to navigate in.
+	 * @param lookAtSceneCenter Whether camera lookAt should be scene center. Defaults to false, meaning (0, 0, 0).
 	 * @param msaaSamples The number of samples for the navigationRenderTarget. Default is 4.
 	 */
-	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene, msaaSamples: number = 4) {
+	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene, lookAtSceneCenter: boolean = false, msaaSamples: number = 4) {
 		super();
 
 		this.camera = camera;
@@ -104,8 +105,6 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.style.touchAction = 'none'; // disable scrolling on touch
 		this.renderer = renderer;
 		this.actualScene = scene;
-
-		this.camera.lookAt(0, 0, 0);
 
 		this.navigationRenderTarget = new WebGLRenderTarget(1, 1, { samples: msaaSamples });
 		this.navigationRenderTarget.depthTexture = new DepthTexture(1, 1, FloatType);
@@ -175,6 +174,11 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.addEventListener('wheel', this.onMouseWheelBound, { passive: false });
 		this.domElement.addEventListener('contextmenu', this.preventContextMenu);
 
+		if (lookAtSceneCenter)
+			this.reloadCamera();
+		else 
+			this.camera.lookAt(0, 0, 0);
+
 		if (this.debug) {
 			const testSphereGeometry = new SphereGeometry(0.25);
 			const testSphereMaterial = new MeshBasicMaterial();
@@ -211,8 +215,7 @@ export class WorldInHandControls extends EventTarget {
 			|| ((nextCameraPosition.y - this.groundPlane) / (this.camera.position.y - this.groundPlane)) < 0) return;
 
 		this.camera.position.copy(nextCameraPosition);
-		this.camera.updateProjectionMatrix();
-		this.camera.updateMatrixWorld();
+		this.camera.updateMatrixWorld(true);
 
 		const linearDepth = this.readDepthAtPosition(0, 0);
 		this.cameraLookAt.copy(new Vector3(0, 0, linearDepth).unproject(this.camera));
@@ -244,8 +247,7 @@ export class WorldInHandControls extends EventTarget {
 		this.camera.position.add(rotationCenterToCamera);
 		this.camera.lookAt(this.cameraLookAt);
 
-		this.camera.updateProjectionMatrix();
-		this.camera.updateMatrixWorld();
+		this.camera.updateMatrixWorld(true);
 
 		this.updateFurthestSceneDepth();
 	}
@@ -260,8 +262,7 @@ export class WorldInHandControls extends EventTarget {
 		this.camera.position.copy(nextCameraPosition);
 		this.cameraLookAt.add(delta);
 
-		this.camera.updateMatrixWorld();
-		this.camera.updateProjectionMatrix();
+		this.camera.updateMatrixWorld(true);
 
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
@@ -434,48 +435,6 @@ export class WorldInHandControls extends EventTarget {
 		this.copyPlaneMaterial.uniforms = { uColorTexture: { value: this.navigationRenderTarget.texture } };
 		this.renderer.setRenderTarget(null);
 		this.renderer.render(this.copyPlaneScene, this.camera);
-
-		/*
-		// SHOW FRAMEBUFFER
-		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
-		this.renderer.render(this.depthBufferScene, this.camera);
-
-		const canvas = document.getElementById('scene') as HTMLCanvasElement;
-
-		const depthBufferArray = new Float32Array(canvas.width * canvas.height * 4);
-		this.renderer.readRenderTargetPixels(this.depthBufferRenderTarget, 0, 0, canvas.width, canvas.height, depthBufferArray);
-
-		for (let i = 0; i < depthBufferArray.length; i+=4) {
-			const linearDepth = (this.camera.projectionMatrixInverse.elements[10] * depthBufferArray[i] + this.camera.projectionMatrixInverse.elements[14])
-				/ ((this.camera.projectionMatrixInverse.elements[11] * depthBufferArray[i] + this.camera.projectionMatrixInverse.elements[15]) * this.camera.far);
-			depthBufferArray[i] = -linearDepth;
-
-			depthBufferArray[i] *= 255;
-			depthBufferArray[i+1] = depthBufferArray[i];
-			depthBufferArray[i+2] = depthBufferArray[i];
-			depthBufferArray[i+3] = 255;
-		}
-
-		const canvas2 = document.getElementById('copy') as HTMLCanvasElement;
-		canvas2.width = canvas.width;
-		canvas2.height = canvas.height;
-		const imageData = (canvas2.getContext('2d') as CanvasRenderingContext2D).createImageData(canvas.width, canvas.height);
-		imageData.data.set(depthBufferArray); // copy here
-		// invert y-axis of image data
-		const bytesPerRow = canvas.width * 4;
-		const halfHeight = canvas.height / 2;
-		for (let y = 0; y < halfHeight; ++y) {
-			const topOffset = y * bytesPerRow;
-			const bottomOffset = (canvas.height - y - 1) * bytesPerRow;
-			for (let i = 0; i < bytesPerRow; ++i) {
-				const temp = imageData.data[topOffset + i];
-				imageData.data[topOffset + i] = imageData.data[bottomOffset + i];
-				imageData.data[bottomOffset + i] = temp;
-			}
-		}
-
-		(canvas2.getContext('2d') as CanvasRenderingContext2D).putImageData(imageData, 0, 0);
-		 */
 	}
 
 	/**
