@@ -17,8 +17,6 @@ import {
 	Sphere,
 	DepthFormat,
 	DepthTexture,
-	SphereGeometry,
-	MeshBasicMaterial,
 	Object3D
 } from 'three';
 import { WorldInHandControlsVisualiser } from './worldInHandControlsVisualiser';
@@ -174,13 +172,6 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.addEventListener('wheel', this.onMouseWheelBound, { passive: false });
 		this.domElement.addEventListener('contextmenu', this.preventContextMenu);
 
-		if (this.debug) {
-			const testSphereGeometry = new SphereGeometry(0.25);
-			const testSphereMaterial = new MeshBasicMaterial();
-			this.testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
-			
-			this.actualScene.add(this.testSphereMesh);
-		}
 	}
 
 	/*
@@ -513,6 +504,7 @@ export class WorldInHandControls extends EventTarget {
 		}
 
 		this.camera.lookAt(this.cameraLookAt);
+		this.updateFurthestSceneDepth();
 	}
 
 	protected updateRenderTargetsBound = this.updateRenderTargets.bind(this);

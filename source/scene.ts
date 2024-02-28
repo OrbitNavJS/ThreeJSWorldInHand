@@ -107,9 +107,7 @@ function init() {
 
 			// @ts-expect-error three.js type definitions seem broken, this works.
 			scene.dispatchEvent({type: 'change'});
-
-			/*camera.position.add(new Vector3(50, 2, 0));
-			if (cameraControls instanceof WorldInHandControls) cameraControls.reloadCamera();*/
+			scene.add(visualiser.group);
 
 			requestUpdate();
 		}, undefined, function ( error: unknown ) {
@@ -201,7 +199,7 @@ function init() {
 			backPlaneSize: 1,
 			panHeightGuideColor: '#00ff00',
 			panHeightGuideOpacity: 0.5,
-		}
+		};
 		const worldInHandFolder = helpersFolder.addFolder('WorldInHandHelper');
 		worldInHandFolder.add(worldInHandParameters, 'mouseSize', 0.001, 10).onChange((value: number) => { visualiser.mouseWorldPositionSize = value; requestUpdate(); });
 		worldInHandFolder.add(worldInHandParameters, 'groundPlaneSize', 0.001, 10).onChange((value: number) => { visualiser.groundPlaneSize = value; requestUpdate(); });
