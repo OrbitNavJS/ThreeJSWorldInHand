@@ -17,6 +17,9 @@ import {
 	Sphere,
 	DepthFormat,
 	DepthTexture,
+	SphereGeometry,
+	MeshBasicMaterial,
+	Object3D
 } from 'three';
 import { WorldInHandControlsVisualiser } from './worldInHandControlsVisualiser';
 
@@ -31,9 +34,11 @@ export class WorldInHandControls extends EventTarget {
 
 	protected camera: PerspectiveCamera;
 	protected depthBufferScene: Scene;
+	protected copyPlaneScene: Scene;
 	protected depthBufferRenderTarget: WebGLRenderTarget;
 
 	protected depthBufferPlaneMaterial: ShaderMaterial;
+	protected copyPlaneMaterial: ShaderMaterial;
 
 	/*
 	Navigation state
@@ -72,14 +77,25 @@ export class WorldInHandControls extends EventTarget {
 	protected boundingDepthNDC!: number;
 	protected sceneBackPoint = new Vector3();
 	protected boundingSphere = new Sphere();
-	
+	protected nearPlane = new Plane();
+
+	protected sceneHasMesh = false;
+	protected hasWarnedAboutEmptyScene = false;
+
 	/*
 	Debug
 	 */
 
 	protected _visualiser: WorldInHandControlsVisualiser | undefined;
 
-	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene) {
+	/**
+	 * @param camera The camera to navigate.
+	 * @param domElement The canvas to listen for events on.
+	 * @param renderer The renderer to render with.
+	 * @param scene The scene to navigate in.
+	 * @param msaaSamples The number of samples for the navigationRenderTarget. Default is 4.
+	 */
+	constructor(camera: PerspectiveCamera, domElement: HTMLCanvasElement, renderer: WebGLRenderer, scene: Scene, msaaSamples: number = 4) {
 		super();
 
 		this.camera = camera;
@@ -90,14 +106,12 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(0, 0, 0);
 
-		this.navigationRenderTarget = new WebGLRenderTarget(1, 1);
+		this.navigationRenderTarget = new WebGLRenderTarget(1, 1, { samples: msaaSamples });
 		this.navigationRenderTarget.depthTexture = new DepthTexture(1, 1, FloatType);
 		this.navigationRenderTarget.depthTexture.format = DepthFormat;
 
 		this.depthBufferRenderTarget = new WebGLRenderTarget(1, 1, {format: RGBAFormat, type: FloatType});
 		this.updateRenderTargets();
-
-		this.depthBufferScene = new Scene();
 
 		{
 			const planeVertexShader = `
@@ -109,7 +123,7 @@ export class WorldInHandControls extends EventTarget {
 			}
 			`;
 
-			const planeFragmentShader = `
+			const depthPlaneFragmentShader = `
 			varying vec2 vUV;
 			uniform sampler2D uDepthTexture;
 			
@@ -118,16 +132,36 @@ export class WorldInHandControls extends EventTarget {
 			}
 			`;
 
+			const copyPlaneFragmentShader = `
+			varying vec2 vUV;
+			uniform sampler2D uColorTexture;
+			
+			void main() {
+				gl_FragColor = LinearTosRGB(texture(uColorTexture, vUV));
+			}
+			`;
+
 			const planeGeometry = new PlaneGeometry(2, 2);
 
 			this.depthBufferPlaneMaterial = new ShaderMaterial();
 			this.depthBufferPlaneMaterial.vertexShader = planeVertexShader;
-			this.depthBufferPlaneMaterial.fragmentShader = planeFragmentShader;
+			this.depthBufferPlaneMaterial.fragmentShader = depthPlaneFragmentShader;
 
 			const depthBufferPlane = new Mesh(planeGeometry, this.depthBufferPlaneMaterial);
 			depthBufferPlane.frustumCulled = false;
 
+			this.depthBufferScene = new Scene();
 			this.depthBufferScene.add(depthBufferPlane);
+
+			this.copyPlaneMaterial = new ShaderMaterial();
+			this.copyPlaneMaterial.vertexShader = planeVertexShader;
+			this.copyPlaneMaterial.fragmentShader = copyPlaneFragmentShader;
+
+			const copyPlane = new Mesh(planeGeometry, this.copyPlaneMaterial);
+			copyPlane.frustumCulled = false;
+			
+			this.copyPlaneScene = new Scene();
+			this.copyPlaneScene.add(copyPlane);
 		}
 
 		this.setupResiliency();
@@ -139,23 +173,35 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.addEventListener('pointercancel', this.onPointerUpBound);
 		this.domElement.addEventListener('wheel', this.onMouseWheelBound, { passive: false });
 		this.domElement.addEventListener('contextmenu', this.preventContextMenu);
+
+		if (this.debug) {
+			const testSphereGeometry = new SphereGeometry(0.25);
+			const testSphereMaterial = new MeshBasicMaterial();
+			this.testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
+			
+			this.actualScene.add(this.testSphereMesh);
+		}
 	}
 
 	/*
 	Actual navigation
 	 */
 
-	protected zoom(amount: number): void {
+	protected zoom(direction: number): void {
 		this.zoomDirection.copy(this.mouseWorldPosition).sub(this.camera.position);
 
 		// prevent zooms that put geometry between camera near plane and camera
-		const zoomAmount = this.zoomDirection.length();
-		const nearPlaneRatio = this.camera.near * 1.1 / zoomAmount;
-		this.zoomDirection.multiplyScalar(1 - nearPlaneRatio);
+		const cameraZAxisWorld = new Vector3(0, 0, 1).unproject(this.camera).normalize();
+		this.nearPlane.setFromNormalAndCoplanarPoint(cameraZAxisWorld, this.camera.position.clone().addScaledVector(cameraZAxisWorld, this.camera.near * 1.1));
+
+		const distanceToNearPlane = this.nearPlane.distanceToPoint(this.mouseWorldPosition);
+
+		const nearPlaneRatio = distanceToNearPlane / this.zoomDirection.length();
+		this.zoomDirection.multiplyScalar(nearPlaneRatio);
 
 		// make zooming in, then zooming out have the same camera distance as before
-		if (amount < 0) this.zoomDirection.multiplyScalar(0.33 * amount);
-		else this.zoomDirection.multiplyScalar(0.25 * amount);
+		if (direction < 0) this.zoomDirection.multiplyScalar(0.33 * direction);
+		else this.zoomDirection.multiplyScalar(0.25 * direction);
 
 		// prevent zooming scene too far away
 		const nextCameraPosition = this.camera.position.clone().add(this.zoomDirection);
@@ -219,19 +265,23 @@ export class WorldInHandControls extends EventTarget {
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
 	}
-	
+
 	/*
 	Event handlers
 	 */
 
 	protected onMouseWheelBound = this.onMouseWheel.bind(this);
 	protected onMouseWheel(event: WheelEvent): void {
+		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
+
 		event.preventDefault();
 		this.handleMouseWheel( event );
 	}
 
 	protected onPointerDownBound = this.onPointerDown.bind(this);
 	protected onPointerDown(event: PointerEvent): void {
+		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
+
 		this.domElement.removeEventListener('pointermove', this.handlePointerMovePanBound);
 		this.domElement.removeEventListener('pointermove', this.handlePointerMoveRotateBound);
 		this.domElement.removeEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
@@ -261,7 +311,7 @@ export class WorldInHandControls extends EventTarget {
 				this.domElement.addEventListener('pointermove', this.handlePointerMoveRotateBound);
 				break;
 
-				// right mouse
+			// right mouse
 			case 2:
 				this.handlePointerDownPan(event);
 				this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
@@ -291,7 +341,6 @@ export class WorldInHandControls extends EventTarget {
 
 		this.zoom(-(event.deltaY / Math.abs(event.deltaY)));
 
-		this.update();
 		this.dispatchEvent(new Event('change'));
 	}
 
@@ -311,7 +360,6 @@ export class WorldInHandControls extends EventTarget {
 		this.rotate(this.rotateDelta);
 
 		this.rotateStart.copy(this.rotateEnd);
-		this.update();
 		this.dispatchEvent(new Event('change'));
 	}
 
@@ -340,7 +388,6 @@ export class WorldInHandControls extends EventTarget {
 
 		this.pan(panCurrent.clone().sub(this.panStart));
 
-		this.update();
 		this.dispatchEvent(new Event('change'));
 	}
 
@@ -379,13 +426,19 @@ export class WorldInHandControls extends EventTarget {
 
 	/**
 	 * Updates the navigation with the current data in navigationRenderTarget.
+	 * @param copyToCanvas Whether to copy the navigationRenderTarget to the canvas.
 	 */
-	public update(): void {
+	public update(copyToCanvas: boolean = true): void {
 		this.depthBufferPlaneMaterial.uniforms = { uDepthTexture: { value: this.navigationRenderTarget.depthTexture } };
 		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
 		this.renderer.render(this.depthBufferScene, this.camera);
 
-		/*xz-plane
+		if (!copyToCanvas) return;
+		this.copyPlaneMaterial.uniforms = { uColorTexture: { value: this.navigationRenderTarget.texture } };
+		this.renderer.setRenderTarget(null);
+		this.renderer.render(this.copyPlaneScene, this.camera);
+
+		/*
 		// SHOW FRAMEBUFFER
 		this.renderer.setRenderTarget(this.depthBufferRenderTarget);
 		this.renderer.render(this.depthBufferScene, this.camera);
@@ -442,18 +495,38 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.removeEventListener( 'contextmenu', this.preventContextMenu);
 	}
 
+	/**
+	* Reloads the camera's look at position. If cameraLookAt is not provided, the look at position is set to the center of the bounding sphere.
+	* @param cameraLookAt The new look at position of the camera.
+	*/
+	public reloadCamera(cameraLookAt?: Vector3): void {
+		if (cameraLookAt !== undefined) {
+			this.cameraLookAt = cameraLookAt;
+		} else {
+			const lookAtRay = new Ray(this.camera.position, new Vector3(0, 0, 1).unproject(this.camera).normalize());
+			const groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlane);
+
+			if (lookAtRay.intersectPlane(groundPlane, this.cameraLookAt) === null) {
+				this.cameraLookAt.copy(this.boundingSphere.center);
+				console.warn('Could not find a valid look at position for the camera. Using the center of the bounding sphere instead.');
+			}
+		}
+
+		this.camera.lookAt(this.cameraLookAt);
+	}
+
 	protected updateRenderTargetsBound = this.updateRenderTargets.bind(this);
 	/**
 	 * Resizes all RenderTargets to the current dimensions of renderer.
 	 * @protected
 	 */
 	protected updateRenderTargets(): void {
-		const size = this.renderer.getSize(new Vector2);
+		const size = this.renderer.getSize(new Vector2).multiplyScalar(this.renderer.getPixelRatio());
 
 		this.depthBufferRenderTarget.setSize(size.x, size.y);
 		this.navigationRenderTarget.setSize(size.x, size.y);
 	}
-	
+
 	/*
 	World in hand helpers
 	 */
@@ -507,18 +580,20 @@ export class WorldInHandControls extends EventTarget {
 
 		return linearDepth;
 	}
-	
+
 	/*
 	Resiliency helpers
 	 */
-	
+
 	/**
 	 * Sets up all resiliency options according to the set flags.
 	 */
-	public setupResiliency(): void {
+	protected setupResiliency(): void {
+		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resiliency!');
+
 		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt).angleTo(new Vector3(0, 1, 0));
 		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
-		
+
 		this.setupMaxLowerRotationAngle();
 		this.setupBoundingSphere();
 	}
@@ -529,8 +604,16 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected setupBoundingSphere(): void {
+		this.actualScene.traverse((object: Object3D) => {
+			if (this.sceneHasMesh) return;
+			else if (object instanceof Mesh) this.sceneHasMesh = true;
+		});
+
 		const box = new Box3().setFromObject(this.actualScene, true);
 		box.getBoundingSphere(this.boundingSphere);
+
+		if (this.boundingSphere.radius <= 0 && this.sceneHasMesh) console.warn('Could not calculate a valid bounding sphere for the given scene. This may break the navigation.');
+
 		this.maxPanZoomDistance = this.boundingSphere.radius * 5;
 		this.groundPlane = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
@@ -563,10 +646,17 @@ export class WorldInHandControls extends EventTarget {
 		}
 	}
 
+	protected warnAboutEmptyScene(): void {
+		if (this.hasWarnedAboutEmptyScene) return;
+
+		this.hasWarnedAboutEmptyScene = true;
+		console.warn('The given scene is empty, or was empty at WorldInHandControls creation. This breaks the navigation. If you have added things to the scene since then, dispatch a "change" event on the given scene.');
+	}
+
 	/*
 	Pointer helpers
 	 */
-	
+
 	/**
 	 * Tracks up to two pointers. Expressly ignores any additional pointers.
 	 * @param event The event to possibly track.
@@ -645,7 +735,7 @@ export class WorldInHandControls extends EventTarget {
 	/**
 	 * Whether to allow rotation of the camera below the xz-plane.
 	 */
-	public set allowRotationBelowScene(value: boolean) {
+	public set allowRotationBelowGroundPlane(value: boolean) {
 		this._allowRotationBelowGroundPlane = value;
 		this.setupMaxLowerRotationAngle();
 	}

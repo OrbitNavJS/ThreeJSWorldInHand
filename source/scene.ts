@@ -93,6 +93,30 @@ function init() {
 		scene.add(directionalLight);
 	}
 
+	// ===== 📦 OBJECTS =====
+	{
+		// load city model
+		const loader = new GLTFLoader();
+
+		loader.load( 'models/scene.gltf', function ( gltf: GLTF ) {
+			const model = gltf.scene;
+			model.scale.set(10, 10, 10);
+			model.rotation.set(0, 1, 0);
+			model.position.set(10, 0, -6);
+			scene.add( model );
+
+			// @ts-expect-error three.js type definitions seem broken, this works.
+			scene.dispatchEvent({type: 'change'});
+
+			/*camera.position.add(new Vector3(50, 2, 0));
+			if (cameraControls instanceof WorldInHandControls) cameraControls.reloadCamera();*/
+
+			requestUpdate();
+		}, undefined, function ( error: unknown ) {
+			console.error( error );
+		});
+	}
+
 	// ===== 🎥 CAMERA =====
 	{
 		camera = new PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
@@ -115,29 +139,6 @@ function init() {
 			if (event.target === canvas) {
 				toggleFullScreen(canvas);
 			}
-		});
-	}
-
-	// ===== 📦 OBJECTS =====
-	{
-		// load city model
-		const loader = new GLTFLoader();
-
-		loader.load( 'models/scene.gltf', function ( gltf: GLTF ) {
-			const model = gltf.scene;
-			model.scale.set(10, 10, 10);
-			model.rotation.set(0, 1, 0);
-			model.position.set(10, 0, -6);
-			scene.add( model );
-
-			// @ts-expect-error three.js type definitions seem broken, this works.
-			scene.dispatchEvent({type: 'change'});
-
-			scene.add(visualiser.group);
-
-			requestUpdate();
-		}, undefined, function ( error: unknown ) {
-			console.error( error );
 		});
 	}
 
@@ -249,9 +250,10 @@ function animate() {
 	if (cameraControls instanceof WorldInHandControls) {
 		renderer.setRenderTarget(cameraControls.navigationRenderTarget);
 		renderer.render(scene, camera);
+	} else {
+		renderer.setRenderTarget(null);
+		renderer.render(scene, camera);
 	}
-	renderer.setRenderTarget(null);
-	renderer.render(scene, camera);
 
 	cameraControls.update();
 }
