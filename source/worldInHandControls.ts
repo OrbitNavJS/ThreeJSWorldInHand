@@ -510,6 +510,7 @@ export class WorldInHandControls extends EventTarget {
 		}
 
 		this.camera.lookAt(this.cameraLookAt);
+		this.updateFurthestSceneDepth();
 	}
 
 	protected updateRenderTargetsBound = this.updateRenderTargets.bind(this);
