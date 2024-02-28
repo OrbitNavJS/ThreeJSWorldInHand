@@ -255,8 +255,8 @@ export class WorldInHandControls extends EventTarget {
 
 		// prevent illegal pan
 		const nextCameraPosition = this.camera.position.clone().add(delta);
-		if (nextCameraPosition.length() > this.maxPanZoomDistance) return;
-
+		if (nextCameraPosition.clone().sub(this.boundingSphere.center).length() > this.maxPanZoomDistance) return;
+		
 		this.camera.position.copy(nextCameraPosition);
 		this.cameraLookAt.add(delta);
 
@@ -546,6 +546,8 @@ export class WorldInHandControls extends EventTarget {
 		this.mousePosition.x = ( x / w ) * 2 - 1;
 		this.mousePosition.y = 1 - ( y / h ) * 2;
 
+		this.mousePosition.clamp(new Vector2(-1, -1), new Vector2(1, 1));
+
 		const depth = this.readDepthAtPosition(this.mousePosition.x, this.mousePosition.y);
 		const clampedDepth = Math.min(depth, this.boundingDepthNDC);
 		this.mouseWorldPosition.set(this.mousePosition.x, this.mousePosition.y, clampedDepth);
@@ -553,6 +555,7 @@ export class WorldInHandControls extends EventTarget {
 	}
 
 	/**
+	 * Reads the depth at the specified position in NDC. x and y are clamped to [-1, 1].
 	 * @param x x position in NDC
 	 * @param y y position in NDC
 	 * @return NDC depth [-1, 1] at the specified coordinates
@@ -560,6 +563,9 @@ export class WorldInHandControls extends EventTarget {
 	protected readDepthAtPosition(x: number, y: number): number {
 		const w = this.depthBufferRenderTarget.width;
 		const h = this.depthBufferRenderTarget.height;
+
+		x = Math.max(Math.min(1, x), -1);
+		y = Math.max(Math.min(1, y), -1);
 
 		const xPixel = x * w/2 + w/2;
 		const yPixel = y * h/2 + h/2;
