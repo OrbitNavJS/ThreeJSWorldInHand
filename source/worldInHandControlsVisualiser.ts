@@ -6,7 +6,6 @@ import {
 	Sphere,
 	MeshBasicMaterial,
 	PlaneGeometry,
-	PlaneHelper,
 	Plane,
 	Vector3,
 	DoubleSide
@@ -17,7 +16,8 @@ export type UpdateData = {
 	groundPlaneHeight?: number,
 	backPlaneAnchor?: Vector3,
 	boundingSphere?: Sphere,
-	panHeightGuideHeight?: number
+	panHeightGuideHeight?: number,
+	maxNavigationSphereCenter?: Vector3
 }
 
 export type VisibilitySetters = {
@@ -25,6 +25,7 @@ export type VisibilitySetters = {
 	showGroundPlane?: boolean,
 	showBackPlane?: boolean,
 	showBoundingSphere?: boolean,
+	showMaxNavigationSphere?: boolean,
 	showPanHeightGuide?: boolean
 }
 
@@ -38,6 +39,7 @@ export class WorldInHandControlsVisualiser {
 	protected _showGroundPlane: boolean = false;
 	protected _showBackPlane: boolean = false;
 	protected _showBoundingSphere: boolean = false;
+	protected _showMaxNavigationSphere: boolean = false;
 	protected _showPanHeightGuide: boolean = false;
 
 	/**
@@ -47,11 +49,12 @@ export class WorldInHandControlsVisualiser {
 	protected groundPlane: Mesh;
 	protected backPlane: Mesh;
 	protected boundingSphere: Mesh;
+	protected maxNavigationSphere: Mesh;
 	protected panHeightGuide: Mesh;
 
 	readonly group: Group;
 
-	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showPanHeightGuide?: boolean) {
+	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showMaxNavigationSphere?: boolean, showPanHeightGuide?: boolean) {
 		this.camera = camera;
 
 		/** Create basic scene objects */
@@ -101,11 +104,21 @@ export class WorldInHandControlsVisualiser {
 			this.boundingSphere = new Mesh(boundingSphereGeometry, boundingSphereMaterial);
 		}
 
+		{	
+			const maxNavigationSphereGeometry = new SphereGeometry();
+			const maxNavigationSphereMaterial = new MeshBasicMaterial({ color: 0xffff00, side: DoubleSide });
+			maxNavigationSphereMaterial.depthWrite = false;
+			maxNavigationSphereMaterial.stencilWrite = false;
+			maxNavigationSphereMaterial.wireframe = true;
+			this.maxNavigationSphere = new Mesh(maxNavigationSphereGeometry, maxNavigationSphereMaterial);
+		}
+
 		/** Toggle visibilty */ 
 		this.showMouseWorldPosition = (showMouseWorldPosition !== undefined) ? showMouseWorldPosition : false;
 		this.showGroundPlane = (showGroundPlane !== undefined) ? showGroundPlane : false;
 		this.showBackPlane = (showBackPlane !== undefined) ? showBackPlane : false;
 		this.showBoundingSphere = (showBoundingSphere !== undefined) ? showBoundingSphere : false;
+		this.showMaxNavigationSphere = (showMaxNavigationSphere !== undefined) ? showMaxNavigationSphere : false;
 		this.showPanHeightGuide = (showPanHeightGuide !== undefined) ? showPanHeightGuide : false;
 	}
 
@@ -121,8 +134,6 @@ export class WorldInHandControlsVisualiser {
 		}
 
 		if (data.backPlaneAnchor) {
-			debugger
-
 			const normal = new Vector3(0, 0, 1).unproject(this.camera).normalize();
 			const actualBackPlane = new Plane().setFromNormalAndCoplanarPoint(normal, data.backPlaneAnchor);
 			this.backPlane.position.set(0, 0, 0);
@@ -133,10 +144,17 @@ export class WorldInHandControlsVisualiser {
 		if (data.boundingSphere) {
 			this.boundingSphere.position.copy(data.boundingSphere.center);
 			this.boundingSphere.scale.set(data.boundingSphere.radius, data.boundingSphere.radius, data.boundingSphere.radius);
+
+			const maxSphereRadius = data.boundingSphere.radius * 5;
+			this.maxNavigationSphere.scale.set(maxSphereRadius, maxSphereRadius, maxSphereRadius);
 		}
 
 		if (data.panHeightGuideHeight) {
 			this.panHeightGuide.position.set(0, data.panHeightGuideHeight, 0);
+		}
+
+		if (data.maxNavigationSphereCenter) {
+			this.maxNavigationSphere.position.copy(data.maxNavigationSphereCenter);
 		}
 	}
 	
@@ -146,8 +164,8 @@ export class WorldInHandControlsVisualiser {
 			showGroundPlane: false,
 			showBackPlane: false,
 			showBoundingSphere: false,
+			showMaxNavigationSphere: false,
 			showPanHeightGuide: false
-		
 		});
 	}
 
@@ -155,6 +173,7 @@ export class WorldInHandControlsVisualiser {
 		if (visibilities.showMouseWorldPosition) this.showMouseWorldPosition = visibilities.showMouseWorldPosition;
 		if (visibilities.showBackPlane) this.showBackPlane = visibilities.showBackPlane;
 		if (visibilities.showBoundingSphere) this.showBoundingSphere = visibilities.showBoundingSphere;
+		if (visibilities.showMaxNavigationSphere) this.showMaxNavigationSphere = visibilities.showMaxNavigationSphere;
 		if (visibilities.showGroundPlane) this.showGroundPlane = visibilities.showGroundPlane;
 		if (visibilities.showPanHeightGuide) this.showPanHeightGuide = visibilities.showPanHeightGuide;
 	}
@@ -197,6 +216,15 @@ export class WorldInHandControlsVisualiser {
 
 		if (value) this.group.add(this.boundingSphere);
 		else this.group.remove(this.boundingSphere);
+	}
+
+	public set showMaxNavigationSphere(value: boolean) {
+		if (this.showMaxNavigationSphere === value) return;
+
+		this._showMaxNavigationSphere = value;
+
+		if (value) this.group.add(this.maxNavigationSphere);
+		else this.group.remove(this.maxNavigationSphere);
 	}
 
 	public set showPanHeightGuide(value: boolean) {
@@ -250,6 +278,10 @@ export class WorldInHandControlsVisualiser {
 
 	public set boundingSphereColor(value: number){
 		(this.boundingSphere.material as MeshBasicMaterial).color.set(value);
+	}
+
+	public set maxNavigationSphereColor(value: number){
+		(this.maxNavigationSphere.material as MeshBasicMaterial).color.set(value);
 	}
 
 	/**

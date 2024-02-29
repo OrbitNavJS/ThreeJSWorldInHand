@@ -213,6 +213,7 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(intersectionXZ);
 
 		this.updateFurthestSceneDepth();
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
 	}
 
 	protected rotate(delta: Vector2): void {
@@ -255,6 +256,7 @@ export class WorldInHandControls extends EventTarget {
 
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
 	}
 
 	/*
@@ -505,6 +507,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(this.cameraLookAt);
 		this.updateFurthestSceneDepth();
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
 	}
 
 	protected updateRenderTargetsBound = this.updateRenderTargets.bind(this);
