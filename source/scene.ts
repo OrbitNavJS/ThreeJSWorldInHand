@@ -109,6 +109,7 @@ function init() {
 			scene.dispatchEvent({type: 'change'});
 			scene.add(visualiser.group);
 
+
 			requestUpdate();
 		}, undefined, function ( error: unknown ) {
 			console.error( error );
@@ -129,7 +130,7 @@ function init() {
 		cameraControls.addEventListener('change', requestUpdate);
 		//cameraControls = new OrbitControls(camera, canvas);
 
-		visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true);
+		visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true, true, true);
 		cameraControls.worldInHandControlsVisualiser = visualiser;
 
 		// Full screen

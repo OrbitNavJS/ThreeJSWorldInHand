@@ -8,7 +8,8 @@ import {
 	PlaneGeometry,
 	Plane,
 	Vector3,
-	DoubleSide
+	DoubleSide,
+	CylinderGeometry
 } from 'three';
 
 export type UpdateData = {
@@ -17,7 +18,8 @@ export type UpdateData = {
 	backPlaneAnchor?: Vector3,
 	boundingSphere?: Sphere,
 	panHeightGuideHeight?: number,
-	maxNavigationSphereCenter?: Vector3
+	maxNavigationSphereCenter?: Vector3,
+	rotationCenter?: Vector3,
 }
 
 export type VisibilitySetters = {
@@ -26,7 +28,8 @@ export type VisibilitySetters = {
 	showBackPlane?: boolean,
 	showBoundingSphere?: boolean,
 	showMaxNavigationSphere?: boolean,
-	showPanHeightGuide?: boolean
+	showPanHeightGuide?: boolean,
+	showRotationCenter?: boolean
 }
 
 export class WorldInHandControlsVisualiser {
@@ -41,6 +44,7 @@ export class WorldInHandControlsVisualiser {
 	protected _showBoundingSphere: boolean = false;
 	protected _showMaxNavigationSphere: boolean = false;
 	protected _showPanHeightGuide: boolean = false;
+	protected _showRotationCenter: boolean = false;
 
 	/**
 	 * Scene objects
@@ -51,10 +55,11 @@ export class WorldInHandControlsVisualiser {
 	protected boundingSphere: Mesh;
 	protected maxNavigationSphere: Mesh;
 	protected panHeightGuide: Mesh;
+	protected rotationCenter: Group;
 
 	readonly group: Group;
 
-	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showMaxNavigationSphere?: boolean, showPanHeightGuide?: boolean) {
+	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showMaxNavigationSphere?: boolean, showPanHeightGuide?: boolean, showRotationCenter?: boolean) {
 		this.camera = camera;
 
 		/** Create basic scene objects */
@@ -113,6 +118,22 @@ export class WorldInHandControlsVisualiser {
 			this.maxNavigationSphere = new Mesh(maxNavigationSphereGeometry, maxNavigationSphereMaterial);
 		}
 
+		{
+			const rotationCenterGeometry = new CylinderGeometry(0.05, 0.05, 1);
+			const rotationCenterMaterial = new MeshBasicMaterial({ color: 0xff0000, side: DoubleSide });
+			rotationCenterMaterial.depthWrite = false;
+			rotationCenterMaterial.stencilWrite = false;
+
+			this.rotationCenter = new Group();
+			this.rotationCenter.renderOrder = Number.MAX_SAFE_INTEGER;
+			const cylinderHorizontal = new Mesh(rotationCenterGeometry, rotationCenterMaterial);
+			const cylinderVertical = new Mesh(rotationCenterGeometry, rotationCenterMaterial);
+			cylinderHorizontal.rotateX(Math.PI / 2);
+
+			this.rotationCenter.add(cylinderHorizontal);
+			this.rotationCenter.add(cylinderVertical);
+		}
+
 		/** Toggle visibilty */ 
 		this.showMouseWorldPosition = (showMouseWorldPosition !== undefined) ? showMouseWorldPosition : false;
 		this.showGroundPlane = (showGroundPlane !== undefined) ? showGroundPlane : false;
@@ -120,6 +141,7 @@ export class WorldInHandControlsVisualiser {
 		this.showBoundingSphere = (showBoundingSphere !== undefined) ? showBoundingSphere : false;
 		this.showMaxNavigationSphere = (showMaxNavigationSphere !== undefined) ? showMaxNavigationSphere : false;
 		this.showPanHeightGuide = (showPanHeightGuide !== undefined) ? showPanHeightGuide : false;
+		this.showRotationCenter = (showRotationCenter !== undefined) ? showRotationCenter : false;
 	}
 
 	public update(data: UpdateData) {
@@ -156,7 +178,21 @@ export class WorldInHandControlsVisualiser {
 		if (data.maxNavigationSphereCenter) {
 			this.maxNavigationSphere.position.copy(data.maxNavigationSphereCenter);
 		}
-	}
+
+		if(data.rotationCenter) {
+			const cylinderHorizontal = this.rotationCenter.children[0] as Mesh;
+			const cylinderVertical = this.rotationCenter.children[1] as Mesh;
+
+			const cameraRight = new Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion);
+			const cameraRightXZ = new Vector3(cameraRight.x, 0, cameraRight.z).normalize();
+
+			cylinderHorizontal.lookAt(cylinderHorizontal.position.clone().add(cameraRightXZ));
+			cylinderHorizontal.rotateY(Math.PI / 2);
+			cylinderHorizontal.rotateZ(Math.PI / 2);
+
+			cylinderHorizontal.position.copy(data.rotationCenter);
+			cylinderVertical.position.copy(data.rotationCenter);
+		}}
 	
 	public dispose(){
 		this.setVisibility({
@@ -165,7 +201,8 @@ export class WorldInHandControlsVisualiser {
 			showBackPlane: false,
 			showBoundingSphere: false,
 			showMaxNavigationSphere: false,
-			showPanHeightGuide: false
+			showPanHeightGuide: false,
+			showRotationCenter: false
 		});
 	}
 
@@ -176,6 +213,7 @@ export class WorldInHandControlsVisualiser {
 		if (visibilities.showMaxNavigationSphere) this.showMaxNavigationSphere = visibilities.showMaxNavigationSphere;
 		if (visibilities.showGroundPlane) this.showGroundPlane = visibilities.showGroundPlane;
 		if (visibilities.showPanHeightGuide) this.showPanHeightGuide = visibilities.showPanHeightGuide;
+		if (visibilities.showRotationCenter) this.showRotationCenter = visibilities.showRotationCenter;
 	}
 		
 	/**
@@ -236,6 +274,15 @@ export class WorldInHandControlsVisualiser {
 		else this.group.remove(this.panHeightGuide);
 	}
 
+	public set showRotationCenter(value: boolean) {
+		if (this.showRotationCenter === value) return;
+
+		this._showRotationCenter = value;
+
+		if (value) this.group.add(this.rotationCenter);
+		else this.group.remove(this.rotationCenter);
+	}
+
 	/**
 	 * Scale setters
 	 */
@@ -254,6 +301,11 @@ export class WorldInHandControlsVisualiser {
 	
 	public set backPlaneSize(value: number) {
 		this.backPlane.scale.set(value, value, value);
+	}
+
+	public set rotationCenterSize(value: number) {
+		(this.rotationCenter.children[0] as Mesh).scale.set(value, value, value);
+		(this.rotationCenter.children[1] as Mesh).scale.set(value, value, value);
 	}
 
 	/**
@@ -284,6 +336,11 @@ export class WorldInHandControlsVisualiser {
 		(this.maxNavigationSphere.material as MeshBasicMaterial).color.set(value);
 	}
 
+	public set rotationCenterColor(value: number){
+		((this.rotationCenter.children[0] as Mesh).material as MeshBasicMaterial).color.set(value);
+		((this.rotationCenter.children[1] as Mesh).material as MeshBasicMaterial).color.set(value);
+	}
+
 	/**
 	 * Opacity setters
 	 */
@@ -302,5 +359,10 @@ export class WorldInHandControlsVisualiser {
 
 	public set panHeightGuideOpacity(value: number){
 		(this.panHeightGuide.material as MeshBasicMaterial).opacity = value;
+	}
+
+	public set rotationCenterOpacity(value: number){
+		((this.rotationCenter.children[0] as Mesh).material as MeshBasicMaterial).opacity = value;
+		((this.rotationCenter.children[1] as Mesh).material as MeshBasicMaterial).opacity = value;
 	}
 }

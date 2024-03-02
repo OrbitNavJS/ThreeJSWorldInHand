@@ -215,7 +215,8 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(intersectionXZ);
 
 		this.updateFurthestSceneDepth();
-		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
+		//TODO: what if rotation center is mouse?
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position, rotationCenter: this.cameraLookAt});
 	}
 
 	protected rotate(delta: Vector2): void {
@@ -240,6 +241,7 @@ export class WorldInHandControls extends EventTarget {
 		this.camera.updateMatrixWorld(true);
 
 		this.updateFurthestSceneDepth();
+		this._visualiser?.update({ rotationCenter: this.cameraLookAt });
 	}
 
 	protected pan(delta: Vector3): void {
@@ -256,7 +258,7 @@ export class WorldInHandControls extends EventTarget {
 
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
-		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position, rotationCenter: this.cameraLookAt });
 	}
 
 	/*
@@ -501,7 +503,7 @@ export class WorldInHandControls extends EventTarget {
 		this.mousePosition.x = ( x / w ) * 2 - 1;
 		this.mousePosition.y = 1 - ( y / h ) * 2;
 
-		this.mousePosition.clamp(new Vector2(-1, -1), new Vector2(1, 1));
+		this.mousePosition.clamp(new Vector2(-1, -1), new Vector2(0.99, 0.99));
 
 		const depth = this.readDepthAtPosition(this.mousePosition.x, this.mousePosition.y);
 		const clampedDepth = Math.min(depth, this.boundingDepthNDC);
@@ -589,6 +591,10 @@ export class WorldInHandControls extends EventTarget {
 	 */
 	protected setupMaxLowerRotationAngle(): void {
 		this.maxLowerRotationAngle = this._allowRotationBelowGroundPlane ? Math.PI - 0.001 : Math.PI / 2;
+
+		if (this._visualiser !== undefined) {
+			this._visualiser.update({ rotationCenter: this.cameraLookAt });
+		}
 	}
 
 	/**
