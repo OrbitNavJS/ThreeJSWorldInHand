@@ -469,6 +469,8 @@ export class WorldInHandControls extends EventTarget {
 		}
 
 		this.camera.lookAt(this.cameraLookAt);
+
+		this.setupAngleToYAxis();
 		this.updateFurthestSceneDepth();
 	}
 
@@ -548,11 +550,7 @@ export class WorldInHandControls extends EventTarget {
 	 * Sets up all resiliency options according to the set flags.
 	 */
 	protected setupResiliency(): void {
-		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resiliency!');
-
-		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt).angleTo(new Vector3(0, 1, 0));
-		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
-
+		this.setupAngleToYAxis();
 		this.setupMaxLowerRotationAngle();
 		this.setupBoundingSphere();
 	}
@@ -585,6 +583,17 @@ export class WorldInHandControls extends EventTarget {
 	 */
 	protected setupMaxLowerRotationAngle(): void {
 		this.maxLowerRotationAngle = this._allowRotationBelowGroundPlane ? Math.PI - 0.001 : Math.PI / 2;
+	}
+
+	/**
+	 * Sets angleToYAxis as the current angle between the camera look-to vector (i.e., the vector between the camera and what it's looking at) and the y-axis.
+	 * @protected
+	 */
+	protected setupAngleToYAxis(): void {
+		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resiliency!');
+
+		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt).angleTo(new Vector3(0, 1, 0));
+		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
 	}
 
 	/**
