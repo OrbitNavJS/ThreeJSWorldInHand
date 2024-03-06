@@ -85,7 +85,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected debug = false;
+	protected debug = true;
 
 	protected testSphereMesh: Mesh | undefined;
 
@@ -229,9 +229,13 @@ export class WorldInHandControls extends EventTarget {
 	}
 
 	protected rotate(delta: Vector2): void {
+		this._rotateAroundMousePosition = true;
+
 		const rotationCenter = this._rotateAroundMousePosition ? this.mouseWorldPosition : this.cameraLookAt;
 		const rotationCenterToCamera = this.camera.position.clone().sub(rotationCenter);
-		this.camera.position.sub(rotationCenterToCamera);
+		const rotationCenterToCameraLookAt = this.cameraLookAt.clone().sub(rotationCenter);
+		this.camera.position.copy(rotationCenter);
+		this.cameraLookAt.copy(rotationCenter);
 
 		const cameraXAxis = new Vector3().crossVectors(rotationCenterToCamera, this.camera.up).normalize();
 		const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
@@ -244,10 +248,15 @@ export class WorldInHandControls extends EventTarget {
 		this.angleToYAxis = nextAngleToYAxis;
 
 		rotationCenterToCamera.applyMatrix4(rotationMatrix);
+		rotationCenterToCameraLookAt.applyMatrix4(rotationMatrix);
 		this.camera.position.add(rotationCenterToCamera);
-		this.camera.lookAt(this.cameraLookAt);
+		this.cameraLookAt.add(rotationCenterToCameraLookAt);
 
 		this.camera.updateMatrixWorld(true);
+
+		//this.cameraLookAt.setY(0)
+		this.camera.lookAt(this.cameraLookAt);
+		this.testSphereMesh?.position.copy(this.cameraLookAt)
 
 		this.updateFurthestSceneDepth();
 	}
@@ -357,7 +366,7 @@ export class WorldInHandControls extends EventTarget {
 	protected handlePointerMoveRotateBound = this.handlePointerMoveRotate.bind(this);
 	protected handlePointerMoveRotate(event: PointerEvent): void {
 		this.rotateEnd.copy(this.getAveragePointerPosition(event));
-		this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart).multiplyScalar( 0.005 );
+		this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart).divide(this.renderer.getSize(new Vector2()).divideScalar(2));
 
 		this.rotate(this.rotateDelta);
 
