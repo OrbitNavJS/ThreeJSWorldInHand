@@ -72,7 +72,8 @@ export class WorldInHandControls extends EventTarget {
 	protected angleToYAxis!: number;
 	protected maxLowerRotationAngle!: number;
 	protected maxPanZoomDistance!: number;
-	protected groundPlane!: number;
+	protected groundPlaneHeight!: number;
+	protected groundPlane = new Plane();
 	protected boundingDepthNDC!: number;
 	protected sceneBackPoint = new Vector3();
 	protected boundingSphere = new Sphere();
@@ -85,7 +86,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected debug = false;
+	protected debug = true;
 
 	protected testSphereMesh: Mesh | undefined;
 
@@ -175,7 +176,7 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.addEventListener('contextmenu', this.preventContextMenu);
 
 		if (lookAtSceneCenter)
-			this.reloadCamera();
+			this.reloadCamera(this.boundingSphere.center);
 		else 
 			this.camera.lookAt(0, 0, 0);
 
@@ -212,7 +213,7 @@ export class WorldInHandControls extends EventTarget {
 		const nextCameraPosition = this.camera.position.clone().add(this.zoomDirection);
 		if (nextCameraPosition.length() > this.maxPanZoomDistance
 			// prevent zoom through ground plane
-			|| ((nextCameraPosition.y - this.groundPlane) / (this.camera.position.y - this.groundPlane)) < 0) return;
+			|| ((nextCameraPosition.y - this.groundPlaneHeight) / (this.camera.position.y - this.groundPlaneHeight)) < 0) return;
 
 		this.camera.position.copy(nextCameraPosition);
 		this.camera.updateMatrixWorld(true);
@@ -249,9 +250,11 @@ export class WorldInHandControls extends EventTarget {
 		rotationCenterToCameraLookAt.applyMatrix4(rotationMatrix);
 		this.camera.position.add(rotationCenterToCamera);
 		this.cameraLookAt.add(rotationCenterToCameraLookAt);
-		this.camera.lookAt(this.cameraLookAt);
 
 		this.camera.updateMatrixWorld(true);
+
+		this.camera.lookAt(this.cameraLookAt);
+		this.testSphereMesh?.position.copy(this.cameraLookAt)
 
 		this.updateFurthestSceneDepth();
 	}
@@ -361,7 +364,10 @@ export class WorldInHandControls extends EventTarget {
 	protected handlePointerMoveRotateBound = this.handlePointerMoveRotate.bind(this);
 	protected handlePointerMoveRotate(event: PointerEvent): void {
 		this.rotateEnd.copy(this.getAveragePointerPosition(event));
-		this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart).divide(this.renderer.getSize(new Vector2()).divideScalar(2));
+
+		const rendererSize = this.renderer.getSize(new Vector2());
+		const minSideSize = Math.min(rendererSize.x, rendererSize.y);
+		this.rotateDelta.subVectors(this.rotateEnd, this.rotateStart).divideScalar(minSideSize / 2);
 
 		this.rotate(this.rotateDelta);
 
@@ -463,10 +469,9 @@ export class WorldInHandControls extends EventTarget {
 		if (cameraLookAt !== undefined) {
 			this.cameraLookAt = cameraLookAt;
 		} else {
-			const lookAtRay = new Ray(this.camera.position, new Vector3(0, 0, 1).unproject(this.camera).normalize());
-			const groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlane);
+			const lookAtRay = new Ray(this.camera.position, this.camera.getWorldDirection(new Vector3()));
 
-			if (lookAtRay.intersectPlane(groundPlane, this.cameraLookAt) === null) {
+			if (lookAtRay.intersectPlane(this.groundPlane, this.cameraLookAt) === null) {
 				this.cameraLookAt.copy(this.boundingSphere.center);
 				console.warn('Could not find a valid look at position for the camera. Using the center of the bounding sphere instead.');
 			}
@@ -554,9 +559,9 @@ export class WorldInHandControls extends EventTarget {
 	 * Sets up all resiliency options according to the set flags.
 	 */
 	protected setupResiliency(): void {
-		this.setupAngleToYAxis();
 		this.setupMaxLowerRotationAngle();
 		this.setupBoundingSphere();
+		this.setupAngleToYAxis();
 	}
 
 	protected setupBoundingSphereBound = this.setupBoundingSphere.bind(this);
@@ -576,7 +581,10 @@ export class WorldInHandControls extends EventTarget {
 		if (this.boundingSphere.radius <= 0 && this.sceneHasMesh) console.warn('Could not calculate a valid bounding sphere for the given scene. This may break the navigation.');
 
 		this.maxPanZoomDistance = this.boundingSphere.radius * 5;
-		this.groundPlane = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+		this.groundPlaneHeight = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
+
+		// Use negative offset to achieve positive y-height of plane
+		this.groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlaneHeight);
 
 		this.updateFurthestSceneDepth();
 	}
@@ -697,7 +705,7 @@ export class WorldInHandControls extends EventTarget {
 	 */
 
 	/**
-	 * Whether to allow rotation of the camera below the xz-plane.
+	 * Whether to allow rotation of the camera below the set ground plane.
 	 */
 	public set allowRotationBelowGroundPlane(value: boolean) {
 		this._allowRotationBelowGroundPlane = value;
