@@ -85,7 +85,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected debug = true;
+	protected debug = false;
 
 	protected testSphereMesh: Mesh | undefined;
 
@@ -229,18 +229,16 @@ export class WorldInHandControls extends EventTarget {
 	}
 
 	protected rotate(delta: Vector2): void {
-		this._rotateAroundMousePosition = true;
-
 		const rotationCenter = this._rotateAroundMousePosition ? this.mouseWorldPosition : this.cameraLookAt;
 		const rotationCenterToCamera = this.camera.position.clone().sub(rotationCenter);
 		const rotationCenterToCameraLookAt = this.cameraLookAt.clone().sub(rotationCenter);
 		this.camera.position.copy(rotationCenter);
 		this.cameraLookAt.copy(rotationCenter);
 
-		const cameraXAxis = new Vector3().crossVectors(rotationCenterToCamera, this.camera.up).normalize();
+		const cameraXAxis = new Vector3().crossVectors(this.camera.getWorldDirection(new Vector3()).negate(), this.camera.up).normalize();
 		const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
 
-		// prevent illegal rotation
+		// prevent illegal rotation of the camera onto the y-axis (i.e., the up-vector)
 		let nextAngleToYAxis = this.angleToYAxis - delta.y;
 		nextAngleToYAxis = Math.max(Math.min(nextAngleToYAxis, this.maxLowerRotationAngle), 0.001);
 		const rotationDelta = this.angleToYAxis - nextAngleToYAxis;
@@ -251,12 +249,9 @@ export class WorldInHandControls extends EventTarget {
 		rotationCenterToCameraLookAt.applyMatrix4(rotationMatrix);
 		this.camera.position.add(rotationCenterToCamera);
 		this.cameraLookAt.add(rotationCenterToCameraLookAt);
+		this.camera.lookAt(this.cameraLookAt);
 
 		this.camera.updateMatrixWorld(true);
-
-		//this.cameraLookAt.setY(0)
-		this.camera.lookAt(this.cameraLookAt);
-		this.testSphereMesh?.position.copy(this.cameraLookAt)
 
 		this.updateFurthestSceneDepth();
 	}
