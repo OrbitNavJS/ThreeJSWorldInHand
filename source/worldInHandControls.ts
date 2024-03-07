@@ -86,7 +86,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected debug = true;
+	protected debug = false;
 
 	protected testSphereMesh: Mesh | undefined;
 
@@ -232,7 +232,7 @@ export class WorldInHandControls extends EventTarget {
 	protected rotate(delta: Vector2): void {
 		const rotationCenter = this._rotateAroundMousePosition ? this.mouseWorldPosition : this.cameraLookAt;
 		const rotationCenterToCamera = this.camera.position.clone().sub(rotationCenter);
-		const rotationCenterToCameraLookAt = this.cameraLookAt.clone().sub(rotationCenter);
+		const cameraToCameraLookAt = this.cameraLookAt.clone().sub(this.camera.position);
 		this.camera.position.copy(rotationCenter);
 		this.cameraLookAt.copy(rotationCenter);
 
@@ -244,18 +244,17 @@ export class WorldInHandControls extends EventTarget {
 		nextAngleToYAxis = Math.max(Math.min(nextAngleToYAxis, this.maxLowerRotationAngle), 0.001);
 		const rotationDelta = this.angleToYAxis - nextAngleToYAxis;
 		rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, rotationDelta));
-		this.angleToYAxis = nextAngleToYAxis;
 
 		rotationCenterToCamera.applyMatrix4(rotationMatrix);
-		rotationCenterToCameraLookAt.applyMatrix4(rotationMatrix);
+		cameraToCameraLookAt.applyMatrix4(rotationMatrix);
 		this.camera.position.add(rotationCenterToCamera);
-		this.cameraLookAt.add(rotationCenterToCameraLookAt);
+		this.cameraLookAt.copy(this.camera.position.clone().add(cameraToCameraLookAt));
 
 		this.camera.updateMatrixWorld(true);
 
 		this.camera.lookAt(this.cameraLookAt);
-		this.testSphereMesh?.position.copy(this.cameraLookAt)
 
+		this.setupAngleToYAxis();
 		this.updateFurthestSceneDepth();
 	}
 
@@ -604,7 +603,7 @@ export class WorldInHandControls extends EventTarget {
 	protected setupAngleToYAxis(): void {
 		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resiliency!');
 
-		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt).angleTo(new Vector3(0, 1, 0));
+		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt.clone().setY(this.groundPlaneHeight)).angleTo(new Vector3(0, 1, 0));
 		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
 	}
 

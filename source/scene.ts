@@ -161,7 +161,8 @@ function init() {
 		const navigationMode = { current: null };
 		const navigationSettings = {
 			rotateAroundMouse: true,
-			rotateBelowGroundPlane: true
+			rotateBelowGroundPlane: true,
+			boundingBoxGroundPlane: false
 		}
 		navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
 			if (value === 'world-in-hand') {
@@ -174,12 +175,16 @@ function init() {
 
 				cameraControls.rotateAroundMousePosition = navigationSettings.rotateAroundMouse;
 				cameraControls.allowRotationBelowGroundPlane = navigationSettings.rotateBelowGroundPlane;
+				cameraControls.useBottomOfBoundingBoxAsGroundPlane = navigationSettings.boundingBoxGroundPlane;
 
 				navigationSettingsFolder = navigationFolder.addFolder('Navigation Settings');
 				navigationSettingsFolder.add(navigationSettings, 'rotateAroundMouse').name('Rotate around the mouse position').onChange((value: boolean) => {
 					(cameraControls as WorldInHandControls).rotateAroundMousePosition = value;
 				});
 				navigationSettingsFolder.add(navigationSettings, 'rotateBelowGroundPlane').name('Rotate below the set ground plane').onChange((value: boolean) => {
+					(cameraControls as WorldInHandControls).allowRotationBelowGroundPlane = value;
+				});
+				navigationSettingsFolder.add(navigationSettings, 'boundingBoxGroundPlane').name('Use the bottom of the bounding box as the ground plane').onChange((value: boolean) => {
 					(cameraControls as WorldInHandControls).allowRotationBelowGroundPlane = value;
 				});
 			} else if (value === 'orbit') {
