@@ -156,8 +156,13 @@ function init() {
 		gui = new GUI({ title: '🐞 Debug GUI', width: 300 });
 
 		const navigationFolder = gui.addFolder('Navigation');
+		let navigationSettingsFolder: GUI | undefined;
 		const navigationModes = ['world-in-hand', 'orbit'];
 		const navigationMode = { current: null };
+		const navigationSettings = {
+			rotateAroundMouse: true,
+			rotateBelowGroundPlane: true
+		}
 		navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
 			if (value === 'world-in-hand') {
 				if (cameraControls !== undefined) {
@@ -166,15 +171,28 @@ function init() {
 				}
 				cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
 				cameraControls.addEventListener('change', requestUpdate);
-				requestUpdate();
+
+				cameraControls.rotateAroundMousePosition = navigationSettings.rotateAroundMouse;
+				cameraControls.allowRotationBelowGroundPlane = navigationSettings.rotateBelowGroundPlane;
+
+				navigationSettingsFolder = navigationFolder.addFolder('Navigation Settings');
+				navigationSettingsFolder.add(navigationSettings, 'rotateAroundMouse').name('Rotate around the mouse position').onChange((value: boolean) => {
+					(cameraControls as WorldInHandControls).rotateAroundMousePosition = value;
+				});
+				navigationSettingsFolder.add(navigationSettings, 'rotateBelowGroundPlane').name('Rotate below the set ground plane').onChange((value: boolean) => {
+					(cameraControls as WorldInHandControls).allowRotationBelowGroundPlane = value;
+				});
 			} else if (value === 'orbit') {
 				if (cameraControls !== undefined) {
 					cameraControls.dispose();
 					cameraControls.removeEventListener('change', requestUpdate);
 				}
+				if (navigationSettingsFolder !== undefined) {
+					navigationSettingsFolder.destroy();
+					navigationSettingsFolder = undefined;
+				}
 				cameraControls = new OrbitControls(camera, canvas);
 				cameraControls.addEventListener('change', requestUpdate);
-				requestUpdate();
 			}
 		});
 
@@ -202,7 +220,7 @@ function init() {
 			gui.reset();
 			requestUpdate();
 		};
-		gui.add({ resetGui }, 'resetGui').name('RESET');
+		gui.add({ resetGui }, 'resetGui').name('RESET GUI');
 
 		gui.close();
 	}
