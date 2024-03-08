@@ -1,4 +1,4 @@
-import GUI from 'lil-gui';
+import GUI, {Controller} from 'lil-gui';
 import {
 	AmbientLight,
 	AxesHelper,
@@ -158,6 +158,7 @@ function init() {
 		const navigationFolder = gui.addFolder('Navigation');
 		const navigationModes = ['world-in-hand', 'orbit'];
 		const navigationMode = { current: null };
+		let reset: Controller | undefined;
 		navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
 			if (value === 'world-in-hand') {
 				if (cameraControls !== undefined) {
@@ -166,7 +167,7 @@ function init() {
 				}
 				cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
 				cameraControls.addEventListener('change', requestUpdate);
-				requestUpdate();
+				reset = navigationFolder.add({ reset: () => { (cameraControls as WorldInHandControls).reset(); } }, 'reset').name('Reset navigation');
 			} else if (value === 'orbit') {
 				if (cameraControls !== undefined) {
 					cameraControls.dispose();
@@ -174,7 +175,7 @@ function init() {
 				}
 				cameraControls = new OrbitControls(camera, canvas);
 				cameraControls.addEventListener('change', requestUpdate);
-				requestUpdate();
+				if (reset !== undefined) reset.destroy();
 			}
 		});
 

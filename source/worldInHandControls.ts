@@ -58,6 +58,13 @@ export class WorldInHandControls extends EventTarget {
 	protected panHeightGuide = new Plane();
 
 	/*
+	Reset functionality
+	 */
+
+	protected originalCameraPosition: Vector3;
+	protected originalCameraLookAt: Vector3;
+
+	/*
 	Configuration variables
 	 */
 
@@ -186,6 +193,9 @@ export class WorldInHandControls extends EventTarget {
 
 			this.actualScene.add(this.testSphereMesh);
 		}
+
+		this.originalCameraPosition = this.camera.position.clone();
+		this.originalCameraLookAt = this.cameraLookAt.clone();
 	}
 
 	/*
@@ -472,6 +482,19 @@ export class WorldInHandControls extends EventTarget {
 
 		this.setupAngleToYAxis();
 		this.updateFurthestSceneDepth();
+	}
+
+	/**
+	 * Resets the navigation to its original state before it received user inputs.
+	 */
+	public reset(): void {
+		this.camera.position.copy(this.originalCameraPosition);
+		this.cameraLookAt.copy(this.originalCameraLookAt);
+		this.camera.lookAt(this.cameraLookAt);
+
+		this.setupAngleToYAxis();
+
+		this.dispatchEvent(new Event('change'));
 	}
 
 	protected updateRenderTargetsBound = this.updateRenderTargets.bind(this);
