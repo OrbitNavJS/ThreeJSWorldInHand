@@ -254,7 +254,8 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(this.cameraLookAt);
 
-		this.setupAngleToYAxis();
+		if (this._rotateAroundMousePosition) this.setupAngleToYAxis();
+		else this.angleToYAxis = nextAngleToYAxis;
 		this.updateFurthestSceneDepth();
 	}
 
