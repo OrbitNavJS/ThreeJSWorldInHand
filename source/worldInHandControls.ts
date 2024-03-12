@@ -215,8 +215,10 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(intersectionXZ);
 
 		this.updateFurthestSceneDepth();
-		//TODO: what if rotation center is mouse?
-		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position, rotationCenter: this.cameraLookAt});
+		if (this._visualiser !== undefined) {
+			this._visualiser.update({ maxNavigationSphereCenter: this.camera.position});
+			if(!this._rotateAroundMousePosition) this._visualiser.update({ rotationCenter: this.cameraLookAt });
+		}
 	}
 
 	protected rotate(delta: Vector2): void {
@@ -241,7 +243,7 @@ export class WorldInHandControls extends EventTarget {
 		this.camera.updateMatrixWorld(true);
 
 		this.updateFurthestSceneDepth();
-		this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+		this._visualiser?.update({ rotationCenter: rotationCenter });
 	}
 
 	protected pan(delta: Vector3): void {
@@ -258,7 +260,10 @@ export class WorldInHandControls extends EventTarget {
 
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
-		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position, rotationCenter: this.cameraLookAt });
+		if (this._visualiser !== undefined) {
+			this._visualiser.update({ maxNavigationSphereCenter: this.camera.position });
+			if (!this._rotateAroundMousePosition) this._visualiser.update({ rotationCenter: this.cameraLookAt });
+		}
 	}
 
 	/*
