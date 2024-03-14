@@ -19,7 +19,7 @@ import {
 	DepthTexture,
 	SphereGeometry,
 	MeshBasicMaterial,
-	Object3D
+	Object3D, Material
 } from 'three';
 
 export class WorldInHandControls extends EventTarget {
@@ -459,6 +459,32 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.removeEventListener( 'pointercancel', this.onPointerUpBound);
 		this.domElement.removeEventListener( 'wheel', this.onMouseWheelBound);
 		this.domElement.removeEventListener( 'contextmenu', this.preventContextMenu);
+
+		this.navigationRenderTarget.depthTexture.dispose();
+		this.navigationRenderTarget.texture.dispose();
+		this.navigationRenderTarget.dispose();
+
+		this.depthBufferPlaneMaterial.dispose();
+		this.depthBufferRenderTarget.texture.dispose();
+		this.depthBufferRenderTarget.dispose();
+
+		this.copyPlaneMaterial.dispose();
+
+		this.depthBufferScene.traverse((object: Object3D) => {
+			if (object instanceof Mesh) {
+				object.geometry.dispose();
+				(object.material as Material).dispose();
+			}
+		});
+		this.copyPlaneScene.traverse((object: Object3D) => {
+			if (object instanceof Mesh) {
+				object.geometry.dispose();
+				(object.material as Material).dispose();
+			}
+		});
+
+		this.testSphereMesh?.geometry.dispose();
+		(this.testSphereMesh?.material as Material)?.dispose();
 	}
 
 	/**
