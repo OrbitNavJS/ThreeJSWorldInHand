@@ -5,7 +5,42 @@ Developed as part of the course "3D Computer Graphics: Extending the Three.js Fr
 
 The model used in the demo is based on ["City- Shanghai-Sandboxie"](https://sketchfab.com/3d-models/city-shanghai-sandboxie-3eab4438b9b34ceeaa35367429732970) by [Michael Zhang](https://sketchfab.com/beyond.zht) licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/)
 
-## Usage example
+## Usage
+```javascript
+import { WorldInHandControls } from '@world-in-hand-controls/threejs-world-in-hand';
+
+// Last parameter is the amount of MSAA samples to use for the exposed render target
+const controls = new WorldInHandControls(perspectiveCamera, renderer.domElement, renderer, scene, 4);
+
+// Resilience configuration
+controls.allowRotationBelowGroundPlane = false; // default: true
+controls.useBottomOfBoundingBoxAsGroundPlane = false; // default: true
+controls.rotateAroundMousePosition = false; // default: false
+
+// When scene changes its size
+scene.dispatchEvent({type: 'change'});
+
+// If rendering on demand, listen to change events
+controls.addEventListener('change', render);
+
+// If the renderer.domElement was resized
+scene.dispatchEvent({type: 'resize'});
+
+// If manually changing camera, call this afterwards
+controls.reloadCamera();
+
+function render() {
+    // Render into the exposed render target
+    renderer.setRenderTarget(controls.navigationRenderTarget);
+    renderer.render(scene, perspectiveCamera);
+    
+    // Tell the controls a render has taken place and
+    // by default copy the render target to the canvas
+    controls.update();
+}
+```
+
+## Full usage example
 ```javascript
 import { WorldInHandControls } from '@world-in-hand-controls/threejs-world-in-hand';
 import * as THREE from 'three';
@@ -34,7 +69,7 @@ If no value is passed, this defaults to 4. Pass 0 to disable anti-aliasing.
 For more information, look up:
 https://threejs.org/docs/#api/en/renderers/WebGLRenderTarget.samples
  */
-const controls = new WorldInHandControls(camera, renderer.domElement, renderer, scene, 16);
+const controls = new WorldInHandControls(camera, renderer.domElement, renderer, scene, 4);
 
 /*
 We recommend not manually changing anything about the camera after creating WorldInHandControls.
@@ -43,7 +78,7 @@ If you still change the camera, we recommend calling this. This should return th
 controls.reloadCamera();
 
 /*
-Resiliency configuration
+Resilience configuration
  */
 controls.allowRotationBelowGroundPlane = false; // default: true
 controls.useBottomOfBoundingBoxAsGroundPlane = false; // default: true
