@@ -73,7 +73,7 @@ export class WorldInHandControls extends EventTarget {
 	protected _rotateAroundMousePosition = false;
 
 	/*
-	Navigation resiliency
+	Navigation resilience
 	 */
 
 	protected angleToYAxis!: number;
@@ -171,7 +171,7 @@ export class WorldInHandControls extends EventTarget {
 			this.copyPlaneScene.add(copyPlane);
 		}
 
-		this.setupResiliency();
+		this.setupResilience();
 
 		this.actualScene.addEventListener('change', this.setupBoundingSphereBound);
 		this.actualScene.addEventListener('resize', this.updateRenderTargetsBound);
@@ -592,13 +592,13 @@ export class WorldInHandControls extends EventTarget {
 	}
 
 	/*
-	Resiliency helpers
+	Resilience helpers
 	 */
 
 	/**
-	 * Sets up all resiliency options according to the set flags.
+	 * Sets up all resilience options according to the set flags.
 	 */
-	protected setupResiliency(): void {
+	protected setupResilience(): void {
 		this.setupAngleToYAxis();
 		this.setupMaxLowerRotationAngle();
 		this.setupBoundingSphere();
@@ -606,7 +606,7 @@ export class WorldInHandControls extends EventTarget {
 
 	protected setupBoundingSphereBound = this.setupBoundingSphere.bind(this);
 	/**
-	 * Calculates the bounding sphere of the scene and sets resiliency variables accordingly.
+	 * Calculates the bounding sphere of the scene and sets resilience variables accordingly.
 	 * @protected
 	 */
 	protected setupBoundingSphere(): void {
@@ -639,7 +639,7 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected setupAngleToYAxis(): void {
-		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resiliency!');
+		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resilience!');
 
 		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt).angleTo(new Vector3(0, 1, 0));
 		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
