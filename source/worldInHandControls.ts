@@ -17,8 +17,6 @@ import {
 	Sphere,
 	DepthFormat,
 	DepthTexture,
-	SphereGeometry,
-	MeshBasicMaterial,
 	Object3D,
 	Material
 } from 'three';
@@ -490,9 +488,6 @@ export class WorldInHandControls extends EventTarget {
 				(object.material as Material).dispose();
 			}
 		});
-
-		this.testSphereMesh?.geometry.dispose();
-		(this.testSphereMesh?.material as Material)?.dispose();
 	}
 
 	/**
@@ -636,7 +631,7 @@ export class WorldInHandControls extends EventTarget {
 		this.groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlaneHeight);
 
 		this.updateFurthestSceneDepth();
-        this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlane });
+        this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlaneHeight });
 	}
 
 	/**
