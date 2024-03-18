@@ -22,6 +22,7 @@ import {
 	Object3D,
 	Material
 } from 'three';
+import { WorldInHandControlsVisualiser } from './worldInHandControlsVisualiser';
 
 export class WorldInHandControls extends EventTarget {
 	/**
@@ -94,9 +95,7 @@ export class WorldInHandControls extends EventTarget {
 	Debug
 	 */
 
-	protected debug = false;
-
-	protected testSphereMesh: Mesh | undefined;
+	protected _visualiser: WorldInHandControlsVisualiser | undefined;
 
 	/**
 	 * @param camera The camera to navigate.
@@ -188,16 +187,8 @@ export class WorldInHandControls extends EventTarget {
 		else 
 			this.camera.lookAt(0, 0, 0);
 
-		if (this.debug) {
-			const testSphereGeometry = new SphereGeometry(0.25);
-			const testSphereMaterial = new MeshBasicMaterial();
-			this.testSphereMesh = new Mesh(testSphereGeometry, testSphereMaterial);
-
-			this.actualScene.add(this.testSphereMesh);
-		}
-
-		this.originalCameraPosition = this.camera.position.clone();
-		this.originalCameraLookAt = this.cameraLookAt.clone();
+        this.originalCameraPosition = this.camera.position.clone();
+        this.originalCameraLookAt = this.cameraLookAt.clone();
 	}
 
 	/*
@@ -238,6 +229,8 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(intersectionXZ);
 
 		this.updateFurthestSceneDepth();
+        this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
+        if(!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
 	}
 
 	protected rotate(delta: Vector2): void {
@@ -268,6 +261,7 @@ export class WorldInHandControls extends EventTarget {
 		if (this._rotateAroundMousePosition) this.setupAngleToYAxis();
 		else this.angleToYAxis = nextAngleToYAxis;
 		this.updateFurthestSceneDepth();
+		this._visualiser?.update({ rotationCenter: rotationCenter });
 	}
 
 	protected pan(delta: Vector3): void {
@@ -284,7 +278,9 @@ export class WorldInHandControls extends EventTarget {
 
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
-	}
+        this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
+        if (!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+    }
 
 	/*
 	Event handlers
@@ -393,6 +389,7 @@ export class WorldInHandControls extends EventTarget {
 		this.panStart.copy(this.mouseWorldPosition);
 		// use negative y to make plane have positive y
 		this.panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -this.panStart.y));
+        this._visualiser?.update({ panHeightGuideHeight: this.panStart.y });
 	}
 
 	protected handlePointerMovePanBound = this.handlePointerMovePan.bind(this);
@@ -518,6 +515,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.setupAngleToYAxis();
 		this.updateFurthestSceneDepth();
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
 	}
 
 	/**
@@ -566,12 +564,13 @@ export class WorldInHandControls extends EventTarget {
 		this.mousePosition.x = ( x / w ) * 2 - 1;
 		this.mousePosition.y = 1 - ( y / h ) * 2;
 
-		this.mousePosition.clamp(new Vector2(-1, -1), new Vector2(1, 1));
+		this.mousePosition.clamp(new Vector2(-1, -1), new Vector2(0.99, 0.99));
 
 		const depth = this.readDepthAtPosition(this.mousePosition.x, this.mousePosition.y);
 		const clampedDepth = Math.min(depth, this.boundingDepthNDC);
 		this.mouseWorldPosition.set(this.mousePosition.x, this.mousePosition.y, clampedDepth);
 		this.mouseWorldPosition.unproject(this.camera);
+        this._visualiser?.update({ mouseWorldPosition: this.mouseWorldPosition });
 	}
 
 	/**
@@ -637,6 +636,7 @@ export class WorldInHandControls extends EventTarget {
 		this.groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlaneHeight);
 
 		this.updateFurthestSceneDepth();
+        this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlane });
 	}
 
 	/**
@@ -645,7 +645,8 @@ export class WorldInHandControls extends EventTarget {
 	 */
 	protected setupMaxLowerRotationAngle(): void {
 		this.maxLowerRotationAngle = this._allowRotationBelowGroundPlane ? Math.PI - 0.001 : Math.PI / 2;
-	}
+        this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+    }
 
 	/**
 	 * Sets angleToYAxis as the current angle between the camera look-to vector (i.e., the vector between the camera and what it's looking at) and the y-axis.
@@ -666,6 +667,7 @@ export class WorldInHandControls extends EventTarget {
 		const direction = new Vector3(0, 0, 1).unproject(this.camera).normalize();
 		this.sceneBackPoint.copy(this.boundingSphere.center.clone().addScaledVector(direction, this.boundingSphere.radius));
 		this.boundingDepthNDC = this.sceneBackPoint.clone().project(this.camera).z;
+        this._visualiser?.update({ backPlaneAnchor: this.sceneBackPoint });
 	}
 
 	protected warnAboutEmptyScene(): void {
@@ -775,4 +777,12 @@ export class WorldInHandControls extends EventTarget {
 	public set rotateAroundMousePosition(value: boolean) {
 		this._rotateAroundMousePosition = value;
 	}
+
+	/**
+	 * The visualiser to use for debugging.
+	 */
+	public set worldInHandControlsVisualiser(visualiser: WorldInHandControlsVisualiser) {
+		this._visualiser = visualiser;
+	}
+
 }

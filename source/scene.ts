@@ -17,6 +17,7 @@ import { toggleFullScreen } from './helpers/fullscreen';
 import './style.css';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTF, GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader';
+import { WorldInHandControlsVisualiser } from './worldInHandControlsVisualiser';
 
 const CANVAS_ID = 'scene';
 
@@ -33,6 +34,7 @@ let cameraControls: WorldInHandControls | OrbitControls;
 let axesHelper: AxesHelper;
 let stats: Stats;
 let gui: GUI;
+let visualiser: WorldInHandControlsVisualiser;
 
 let updateRequested = false;
 let resizeRequested = true;
@@ -105,6 +107,8 @@ function init() {
 
 			// @ts-expect-error three.js type definitions seem broken, this works.
 			scene.dispatchEvent({type: 'change'});
+			scene.add(visualiser.group);
+
 
 			requestUpdate();
 		}, undefined, function ( error: unknown ) {
@@ -125,6 +129,9 @@ function init() {
 		cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
 		cameraControls.addEventListener('change', requestUpdate);
 		//cameraControls = new OrbitControls(camera, canvas);
+
+		visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true, true, true);
+		cameraControls.worldInHandControlsVisualiser = visualiser;
 
 		// Full screen
 		window.addEventListener('dblclick', (event) => {
@@ -174,6 +181,8 @@ function init() {
 				cameraControls = new WorldInHandControls(camera, canvas as HTMLCanvasElement, renderer, scene);
 				cameraControls.addEventListener('change', requestUpdate);
 
+                cameraControls.worldInHandControlsVisualiser = visualiser;
+
 				cameraControls.rotateAroundMousePosition = navigationSettings.rotateAroundMouse;
 				cameraControls.allowRotationBelowGroundPlane = navigationSettings.rotateBelowGroundPlane;
 				cameraControls.useBottomOfBoundingBoxAsGroundPlane = navigationSettings.boundingBoxGroundPlane;
@@ -210,6 +219,22 @@ function init() {
 
 		const helpersFolder = gui.addFolder('Helpers');
 		helpersFolder.add(axesHelper, 'visible').name('axes');
+
+		const worldInHandParameters = {
+			mouseSize: 1,
+			heightGuideSize: 1,
+			groundPlaneSize: 1,
+			backPlaneSize: 1,
+			panHeightGuideColor: '#00ff00',
+			panHeightGuideOpacity: 0.5,
+		};
+		const worldInHandFolder = helpersFolder.addFolder('WorldInHandHelper');
+		worldInHandFolder.add(worldInHandParameters, 'mouseSize', 0.001, 10).onChange((value: number) => { visualiser.mouseWorldPositionSize = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'groundPlaneSize', 0.001, 10).onChange((value: number) => { visualiser.groundPlaneSize = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'backPlaneSize', 0.001, 100).onChange((value: number) => { visualiser.backPlaneSize = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'heightGuideSize', 0.001, 10).onChange((value: number) => { visualiser.panHeightGuideSize = value; requestUpdate(); });
+		worldInHandFolder.addColor(worldInHandParameters, 'panHeightGuideColor').onChange((value: number) => { visualiser.panHeightGuideColor = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'panHeightGuideOpacity', 0, 1).onChange((value: number) => { visualiser.panHeightGuideOpacity = value; requestUpdate(); });
 
 		// persist GUI state in local storage on changes
 		gui.onFinishChange(() => {
