@@ -130,7 +130,7 @@ function init() {
 		cameraControls.addEventListener('change', requestUpdate);
 		//cameraControls = new OrbitControls(camera, canvas);
 
-		visualiser = new WorldInHandControlsVisualiser(camera, true, true, true, true, true, true, true);
+		visualiser = new WorldInHandControlsVisualiser(camera, false, false, false, false, false, false, false);
 		cameraControls.worldInHandControlsVisualiser = visualiser;
 
 		// Full screen
@@ -221,20 +221,29 @@ function init() {
 		helpersFolder.add(axesHelper, 'visible').name('axes');
 
 		const worldInHandParameters = {
-			mouseSize: 1,
-			heightGuideSize: 1,
-			groundPlaneSize: 1,
-			backPlaneSize: 1,
-			panHeightGuideColor: '#00ff00',
-			panHeightGuideOpacity: 0.5,
+			enableMouse: false,
+			enableBackPlane: false,
+			enableHeightGuide: false,
+			enableRotationCenter: false,
+			enableBoundingSphere: false,
+			enablePanSphere: false
 		};
+
+		visualiser.panHeightGuideOpacity = 0.5;
+		visualiser.panHeightGuideColor = 0x00ff00;
+		visualiser.panHeightGuideSize = 7.5;
+
+		visualiser.mouseWorldPositionSize = 0.25;
+		visualiser.backPlaneSize = 35;
+
 		const worldInHandFolder = helpersFolder.addFolder('WorldInHandHelper');
-		worldInHandFolder.add(worldInHandParameters, 'mouseSize', 0.001, 10).onChange((value: number) => { visualiser.mouseWorldPositionSize = value; requestUpdate(); });
-		worldInHandFolder.add(worldInHandParameters, 'groundPlaneSize', 0.001, 10).onChange((value: number) => { visualiser.groundPlaneSize = value; requestUpdate(); });
-		worldInHandFolder.add(worldInHandParameters, 'backPlaneSize', 0.001, 100).onChange((value: number) => { visualiser.backPlaneSize = value; requestUpdate(); });
-		worldInHandFolder.add(worldInHandParameters, 'heightGuideSize', 0.001, 10).onChange((value: number) => { visualiser.panHeightGuideSize = value; requestUpdate(); });
-		worldInHandFolder.addColor(worldInHandParameters, 'panHeightGuideColor').onChange((value: number) => { visualiser.panHeightGuideColor = value; requestUpdate(); });
-		worldInHandFolder.add(worldInHandParameters, 'panHeightGuideOpacity', 0, 1).onChange((value: number) => { visualiser.panHeightGuideOpacity = value; requestUpdate(); });
+
+		worldInHandFolder.add(worldInHandParameters, 'enableMouse').onChange((value: boolean) => { visualiser.showMouseWorldPosition = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'enableBackPlane').onChange((value: boolean) => { visualiser.showBackPlane = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'enableHeightGuide').onChange((value: boolean) => { visualiser.showPanHeightGuide = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'enableRotationCenter').onChange((value: boolean) => { visualiser.showRotationCenter = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'enableBoundingSphere').onChange((value: boolean) => { visualiser.showBoundingSphere = value; requestUpdate(); });
+		worldInHandFolder.add(worldInHandParameters, 'enablePanSphere').onChange((value: boolean) => { visualiser.showMaxNavigationSphere = value; requestUpdate(); });
 
 		// persist GUI state in local storage on changes
 		gui.onFinishChange(() => {
