@@ -32,12 +32,12 @@ export class WorldInHandControls extends EventTarget {
 	protected actualScene: Scene;
 
 	protected camera: PerspectiveCamera;
-	protected depthBufferScene: Scene;
-	protected copyPlaneScene: Scene;
+	protected depthBufferScene!: Scene;
+	protected copyPlaneScene!: Scene;
 	protected depthBufferRenderTarget: WebGLRenderTarget;
 
-	protected depthBufferPlaneMaterial: ShaderMaterial;
-	protected copyPlaneMaterial: ShaderMaterial;
+	protected depthBufferPlaneMaterial!: ShaderMaterial;
+	protected copyPlaneMaterial!: ShaderMaterial;
 
 	/*
 	Navigation state
@@ -119,56 +119,7 @@ export class WorldInHandControls extends EventTarget {
 		this.depthBufferRenderTarget = new WebGLRenderTarget(1, 1, {format: RGBAFormat, type: FloatType});
 		this.updateRenderTargets();
 
-		{
-			const planeVertexShader = `
-			varying vec2 vUV;
-			
-			void main() {
-				vUV = uv;
-				gl_Position = vec4(position, 1.0);
-			}
-			`;
-
-			const depthPlaneFragmentShader = `
-			varying vec2 vUV;
-			uniform sampler2D uDepthTexture;
-			
-			void main() {
-				gl_FragColor = texture(uDepthTexture, vUV);
-			}
-			`;
-
-			const copyPlaneFragmentShader = `
-			varying vec2 vUV;
-			uniform sampler2D uColorTexture;
-			
-			void main() {
-				gl_FragColor = LinearTosRGB(texture(uColorTexture, vUV));
-			}
-			`;
-
-			const planeGeometry = new PlaneGeometry(2, 2);
-
-			this.depthBufferPlaneMaterial = new ShaderMaterial();
-			this.depthBufferPlaneMaterial.vertexShader = planeVertexShader;
-			this.depthBufferPlaneMaterial.fragmentShader = depthPlaneFragmentShader;
-
-			const depthBufferPlane = new Mesh(planeGeometry, this.depthBufferPlaneMaterial);
-			depthBufferPlane.frustumCulled = false;
-
-			this.depthBufferScene = new Scene();
-			this.depthBufferScene.add(depthBufferPlane);
-
-			this.copyPlaneMaterial = new ShaderMaterial();
-			this.copyPlaneMaterial.vertexShader = planeVertexShader;
-			this.copyPlaneMaterial.fragmentShader = copyPlaneFragmentShader;
-
-			const copyPlane = new Mesh(planeGeometry, this.copyPlaneMaterial);
-			copyPlane.frustumCulled = false;
-			
-			this.copyPlaneScene = new Scene();
-			this.copyPlaneScene.add(copyPlane);
-		}
+		this.setupRenderGeometries();
 
 		this.setupResilience();
 
@@ -218,8 +169,8 @@ export class WorldInHandControls extends EventTarget {
 		this.camera.position.copy(nextCameraPosition);
 		this.camera.updateMatrixWorld(true);
 
-		const linearDepth = this.readDepthAtPosition(0, 0);
-		this.cameraLookAt.copy(new Vector3(0, 0, linearDepth).unproject(this.camera));
+		const depth = this.readDepthAtPosition(0, 0);
+		this.cameraLookAt.copy(new Vector3(0, 0, depth).unproject(this.camera));
 
 		const scalingFactor = -this.camera.position.y / (this.cameraLookAt.y - this.camera.position.y);
 		// Height of camera reference point should not change
@@ -227,7 +178,7 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(intersectionXZ);
 
 		this.updateFurthestSceneDepth();
-        this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
+        this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
         if(!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
 	}
 
@@ -235,8 +186,6 @@ export class WorldInHandControls extends EventTarget {
 		const rotationCenter = this._rotateAroundMousePosition ? this.mouseWorldPosition : this.cameraLookAt;
 		const rotationCenterToCamera = this.camera.position.clone().sub(rotationCenter);
 		const cameraToCameraLookAt = this.cameraLookAt.clone().sub(this.camera.position);
-		this.camera.position.copy(rotationCenter);
-		this.cameraLookAt.copy(rotationCenter);
 
 		const cameraXAxis = new Vector3().crossVectors(this.camera.getWorldDirection(new Vector3()).negate(), this.camera.up).normalize();
 		const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
@@ -249,7 +198,7 @@ export class WorldInHandControls extends EventTarget {
 
 		rotationCenterToCamera.applyMatrix4(rotationMatrix);
 		cameraToCameraLookAt.applyMatrix4(rotationMatrix);
-		this.camera.position.add(rotationCenterToCamera);
+		this.camera.position.copy(rotationCenter.clone().add(rotationCenterToCamera));
 		this.cameraLookAt.copy(this.camera.position.clone().add(cameraToCameraLookAt));
 
 		this.camera.updateMatrixWorld(true);
@@ -289,7 +238,7 @@ export class WorldInHandControls extends EventTarget {
 		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
 
 		event.preventDefault();
-		this.handleMouseWheel( event );
+		this.handleMouseWheel(event);
 	}
 
 	protected onPointerDownBound = this.onPointerDown.bind(this);
@@ -417,6 +366,7 @@ export class WorldInHandControls extends EventTarget {
 	protected handleTouchMoveZoomBound = this.handleTouchMoveZoom.bind(this);
 	protected handleTouchMoveZoom(event: PointerEvent) {
 		const otherPointer = this.getOtherPointer(event);
+		if (otherPointer === null) return;
 
 		const averageX = (event.clientX + otherPointer.clientX) / 2;
 		const averageY = (event.clientY + otherPointer.clientY) / 2;
@@ -432,6 +382,61 @@ export class WorldInHandControls extends EventTarget {
 
 	protected preventContextMenu(event: Event) {
 		event.preventDefault();
+	}
+
+	/*
+	Miscellaneous helpers
+	 */
+
+	protected setupRenderGeometries(): void {
+		const planeVertexShader = `
+			varying vec2 vUV;
+			
+			void main() {
+				vUV = uv;
+				gl_Position = vec4(position, 1.0);
+			}
+			`;
+
+		const depthPlaneFragmentShader = `
+			varying vec2 vUV;
+			uniform sampler2D uDepthTexture;
+			
+			void main() {
+				gl_FragColor = texture(uDepthTexture, vUV);
+			}
+			`;
+
+		const copyPlaneFragmentShader = `
+			varying vec2 vUV;
+			uniform sampler2D uColorTexture;
+			
+			void main() {
+				gl_FragColor = LinearTosRGB(texture(uColorTexture, vUV));
+			}
+			`;
+
+		const planeGeometry = new PlaneGeometry(2, 2);
+
+		this.depthBufferPlaneMaterial = new ShaderMaterial();
+		this.depthBufferPlaneMaterial.vertexShader = planeVertexShader;
+		this.depthBufferPlaneMaterial.fragmentShader = depthPlaneFragmentShader;
+
+		const depthBufferPlane = new Mesh(planeGeometry, this.depthBufferPlaneMaterial);
+		depthBufferPlane.frustumCulled = false;
+
+		this.depthBufferScene = new Scene();
+		this.depthBufferScene.add(depthBufferPlane);
+
+		this.copyPlaneMaterial = new ShaderMaterial();
+		this.copyPlaneMaterial.vertexShader = planeVertexShader;
+		this.copyPlaneMaterial.fragmentShader = copyPlaneFragmentShader;
+
+		const copyPlane = new Mesh(planeGeometry, this.copyPlaneMaterial);
+		copyPlane.frustumCulled = false;
+
+		this.copyPlaneScene = new Scene();
+		this.copyPlaneScene.add(copyPlane);
 	}
 
 	/*
@@ -510,7 +515,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.setupAngleToYAxis();
 		this.updateFurthestSceneDepth();
-		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position});
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
 	}
 
 	/**
@@ -575,24 +580,24 @@ export class WorldInHandControls extends EventTarget {
 	 * @return NDC depth [-1, 1] at the specified coordinates
 	 */
 	protected readDepthAtPosition(x: number, y: number): number {
-		const w = this.depthBufferRenderTarget.width;
-		const h = this.depthBufferRenderTarget.height;
+		const width = this.depthBufferRenderTarget.width;
+		const height = this.depthBufferRenderTarget.height;
 
 		x = Math.max(Math.min(1, x), -1);
 		y = Math.max(Math.min(1, y), -1);
 
-		const xPixel = x * w/2 + w/2;
-		const yPixel = y * h/2 + h/2;
+		const xPixel = x * width / 2 + width / 2;
+		const yPixel = y * height / 2 + height / 2;
 
 		const depthPixel = new Float32Array(4);
 		this.renderer.readRenderTargetPixels(this.depthBufferRenderTarget, xPixel, yPixel, 1, 1, depthPixel);
 
-		let linearDepth = depthPixel[0];
-		linearDepth = Math.min(1.0, linearDepth);
-		linearDepth = Math.max(0.0, linearDepth);
-		linearDepth = linearDepth * 2 - 1;
+		let depth = depthPixel[0];
+		depth = Math.min(1.0, depth);
+		depth = Math.max(0.0, depth);
+		depth = depth * 2 - 1;
 
-		return linearDepth;
+		return depth;
 	}
 
 	/*
@@ -659,8 +664,7 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected updateFurthestSceneDepth(): void {
-		const direction = new Vector3(0, 0, 1).unproject(this.camera).normalize();
-		this.sceneBackPoint.copy(this.boundingSphere.center.clone().addScaledVector(direction, this.boundingSphere.radius));
+		this.sceneBackPoint.copy(this.boundingSphere.center.clone().addScaledVector(this.camera.getWorldDirection(new Vector3()), this.boundingSphere.radius));
 		this.boundingDepthNDC = this.sceneBackPoint.clone().project(this.camera).z;
         this._visualiser?.update({ backPlaneAnchor: this.sceneBackPoint });
 	}
@@ -682,17 +686,13 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected trackPointer(event: PointerEvent): void {
-		if (this.pointers.length === 0) {
-			this.pointers.push(event);
-			this.previousPointers.push(event);
-			return;
-		} else if (this.pointers.length === 1 && this.pointers[0].pointerId !== event.pointerId) {
+		if (this.pointers.length === 0 || (this.pointers.length === 1 && this.pointers[0].pointerId !== event.pointerId)) {
 			this.pointers.push(event);
 			this.previousPointers.push(event);
 			return;
 		}
 
-		let index = 2;
+		let index = -1;
 		if (this.pointers[0].pointerId === event.pointerId) index = 0;
 		else if (this.pointers[1].pointerId === event.pointerId) index = 1;
 		else return;
@@ -707,17 +707,17 @@ export class WorldInHandControls extends EventTarget {
 	 * @protected
 	 */
 	protected removePointer(event: PointerEvent): void {
-		if (this.pointers.length === 0) return;
-		else if (this.pointers.length === 1) {
-			this.pointers.splice(0, 1);
-			this.previousPointers.splice(0, 1);
+		let index = -1;
+
+		if (this.pointers.length === 0) {
+			return;
+		} else if (this.pointers.length > 0 && this.pointers[0].pointerId === event.pointerId) {
+			index = 0;
+		} else if (this.pointers.length > 1 && this.pointers[1].pointerId === event.pointerId) {
+			index = 1;
+		} else {
 			return;
 		}
-
-		let index = 2;
-		if (this.pointers[0].pointerId === event.pointerId) index = 0;
-		else if (this.pointers[1].pointerId === event.pointerId) index = 1;
-		else return;
 
 		this.pointers.splice(index, 1);
 		this.previousPointers.splice(index, 1);
@@ -728,11 +728,19 @@ export class WorldInHandControls extends EventTarget {
 	 * @param event The pointer NOT to return.
 	 * @protected
 	 */
-	protected getOtherPointer(event: PointerEvent): PointerEvent {
-		return (this.pointers[0].pointerId === event.pointerId) ? this.pointers[1] : this.pointers[0];
+	protected getOtherPointer(event: PointerEvent): PointerEvent | null {
+		if (this.pointers.length < 2) {
+			return null;
+		} else if (this.pointers[0].pointerId === event.pointerId && this.pointers[1].pointerId !== event.pointerId) {
+			return this.pointers[1];
+		} else if (this.pointers[1].pointerId === event.pointerId && this.pointers[0].pointerId !== event.pointerId) {
+			return this.pointers[0];
+		} else {
+			return null;
+		}
 	}
 
-	protected getAveragePointerPosition(event: PointerEvent): Vector2 {
+	protected getAveragePointerPosition(event: PointerEvent): Vector2 | null {
 		const position = new Vector2();
 
 		if (event.pointerType === 'mouse') {
@@ -740,6 +748,8 @@ export class WorldInHandControls extends EventTarget {
 			position.y = event.clientY;
 		} else {
 			const otherPointer = this.getOtherPointer(event);
+			if (otherPointer === null) return null;
+
 			position.x = (event.clientX + otherPointer.clientX) / 2;
 			position.y = (event.clientY + otherPointer.clientY) / 2;
 		}
@@ -748,7 +758,7 @@ export class WorldInHandControls extends EventTarget {
 	}
 
 	/*
-	Setter
+	Setters
 	 */
 
 	/**
