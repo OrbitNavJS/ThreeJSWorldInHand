@@ -1,7 +1,7 @@
 {
   "name": "@world-in-hand-controls/threejs-world-in-hand",
   "private": false,
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "devDependencies": {
     "@types/three": "^0.162.0",
