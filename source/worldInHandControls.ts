@@ -338,7 +338,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.panStart.copy(this.mouseWorldPosition);
 		// use negative y to make plane have positive y
-		this.panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -this.panStart.y));
+		this.panHeightGuide.copy(new Plane(this.camera.up, -this.panStart.y));
 		this._visualiser?.update({ panHeightGuideHeight: this.panStart.y });
 	}
 
@@ -636,7 +636,7 @@ export class WorldInHandControls extends EventTarget {
 		this.groundPlaneHeight = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
 		// Use negative offset to achieve positive y-height of plane
-		this.groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlaneHeight);
+		this.groundPlane = new Plane(this.camera.up, -this.groundPlaneHeight);
 
 		this.updateFurthestSceneDepth();
 		this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlaneHeight });
@@ -658,7 +658,7 @@ export class WorldInHandControls extends EventTarget {
 	protected setupAngleToYAxis(): void {
 		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resilience!');
 
-		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt.clone().setY(this.groundPlaneHeight)).angleTo(new Vector3(0, 1, 0));
+		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt.clone().setY(this.groundPlaneHeight)).angleTo(this.camera.up);
 		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
 	}
 
