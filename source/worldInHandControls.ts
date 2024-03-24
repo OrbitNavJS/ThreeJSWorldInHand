@@ -136,8 +136,8 @@ export class WorldInHandControls extends EventTarget {
 		else 
 			this.camera.lookAt(0, 0, 0);
 
-        this.originalCameraPosition = this.camera.position.clone();
-        this.originalCameraLookAt = this.cameraLookAt.clone();
+		this.originalCameraPosition = this.camera.position.clone();
+		this.originalCameraLookAt = this.cameraLookAt.clone();
 	}
 
 	/*
@@ -178,8 +178,8 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(intersectionXZ);
 
 		this.updateFurthestSceneDepth();
-        this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
-        if(!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
+		if(!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
 	}
 
 	protected rotate(delta: Vector2): void {
@@ -225,9 +225,9 @@ export class WorldInHandControls extends EventTarget {
 
 		// update furthest scene depth in camera coordinates
 		this.updateFurthestSceneDepth();
-        this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
-        if (!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
-    }
+		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
+		if (!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+	}
 
 	/*
 	Event handlers
@@ -310,6 +310,7 @@ export class WorldInHandControls extends EventTarget {
 	protected handlePointerDownRotateBound = this.handlePointerDownRotate.bind(this);
 	protected handlePointerDownRotate(event: PointerEvent): void {
 		const averagePointerPosition = this.getAveragePointerPosition(event);
+		if (averagePointerPosition === null) return;
 		this.updateMouseParameters(averagePointerPosition.x, averagePointerPosition.y);
 
 		this.rotateStart.copy(averagePointerPosition);
@@ -317,7 +318,9 @@ export class WorldInHandControls extends EventTarget {
 
 	protected handlePointerMoveRotateBound = this.handlePointerMoveRotate.bind(this);
 	protected handlePointerMoveRotate(event: PointerEvent): void {
-		this.rotateEnd.copy(this.getAveragePointerPosition(event));
+		const averagePointerPosition = this.getAveragePointerPosition(event);
+		if (averagePointerPosition === null) return;
+		this.rotateEnd.copy(averagePointerPosition);
 
 		const rendererSize = this.renderer.getSize(new Vector2());
 		const minSideSize = Math.min(rendererSize.x, rendererSize.y);
@@ -336,7 +339,7 @@ export class WorldInHandControls extends EventTarget {
 		this.panStart.copy(this.mouseWorldPosition);
 		// use negative y to make plane have positive y
 		this.panHeightGuide.copy(new Plane(new Vector3(0, 1, 0), -this.panStart.y));
-        this._visualiser?.update({ panHeightGuideHeight: this.panStart.y });
+		this._visualiser?.update({ panHeightGuideHeight: this.panStart.y });
 	}
 
 	protected handlePointerMovePanBound = this.handlePointerMovePan.bind(this);
@@ -570,7 +573,7 @@ export class WorldInHandControls extends EventTarget {
 		const clampedDepth = Math.min(depth, this.boundingDepthNDC);
 		this.mouseWorldPosition.set(this.mousePosition.x, this.mousePosition.y, clampedDepth);
 		this.mouseWorldPosition.unproject(this.camera);
-        this._visualiser?.update({ mouseWorldPosition: this.mouseWorldPosition });
+		this._visualiser?.update({ mouseWorldPosition: this.mouseWorldPosition });
 	}
 
 	/**
@@ -636,7 +639,7 @@ export class WorldInHandControls extends EventTarget {
 		this.groundPlane = new Plane(new Vector3(0, 1, 0), -this.groundPlaneHeight);
 
 		this.updateFurthestSceneDepth();
-        this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlaneHeight });
+		this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlaneHeight });
 	}
 
 	/**
@@ -645,8 +648,8 @@ export class WorldInHandControls extends EventTarget {
 	 */
 	protected setupMaxLowerRotationAngle(): void {
 		this.maxLowerRotationAngle = this._allowRotationBelowGroundPlane ? Math.PI - 0.001 : Math.PI / 2;
-        this._visualiser?.update({ rotationCenter: this.cameraLookAt });
-    }
+		this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+	}
 
 	/**
 	 * Sets angleToYAxis as the current angle between the camera look-to vector (i.e., the vector between the camera and what it's looking at) and the y-axis.
@@ -666,7 +669,7 @@ export class WorldInHandControls extends EventTarget {
 	protected updateFurthestSceneDepth(): void {
 		this.sceneBackPoint.copy(this.boundingSphere.center.clone().addScaledVector(this.camera.getWorldDirection(new Vector3()), this.boundingSphere.radius));
 		this.boundingDepthNDC = this.sceneBackPoint.clone().project(this.camera).z;
-        this._visualiser?.update({ backPlaneAnchor: this.sceneBackPoint });
+		this._visualiser?.update({ backPlaneAnchor: this.sceneBackPoint });
 	}
 
 	protected warnAboutEmptyScene(): void {
@@ -789,5 +792,4 @@ export class WorldInHandControls extends EventTarget {
 	public set worldInHandControlsVisualiser(visualiser: WorldInHandControlsVisualiser) {
 		this._visualiser = visualiser;
 	}
-
 }
