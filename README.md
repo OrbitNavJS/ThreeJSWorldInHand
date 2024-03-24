@@ -1,11 +1,34 @@
 # World-in-Hand Navigation for Three.js
-Developed as part of the course "3D Computer Graphics: Extending the Three.js Framework" at Hasso-Plattner-Institut.
+World-In-Hand Navigation is an innovative extension developed as part of a university seminar at Hasso-Plattner-Institut aimed at enhancing the capabilities of the Three.js framework. The primary goal was to introduce a novel navigation approach called "World-In-Hand" navigation to Three.js.
+
+## Introduction 
+This navigation method aims to enhance the user experience by allowing users to interact with the virtual world as if it were a tangible object in their hands. By bridging the gap between the user's interaction and the virtual camera's movement, World-In-Hand Navigation offers a more intuitive, robust, and user-friendly navigation experience compared to the traditional navigation controls provided by Three.js
 
 ▶️ [Demo](https://orbitnavjs.github.io/ThreeJSWorldInHand/)
 
-The model used in the demo is based on ["City- Shanghai-Sandboxie"](https://sketchfab.com/3d-models/city-shanghai-sandboxie-3eab4438b9b34ceeaa35367429732970) by [Michael Zhang](https://sketchfab.com/beyond.zht) licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/)
+Learn more about the project and visit our [Behind-the-project Website](https://github.com/OrbitNavJS/WIHNavigationWebsite)!
+
+## Features
+- **Precise Interaction**: Based on the exact mouse position projected onto the scene, allowing users to grab a point or an object to pan, rotate, or zoom with precision.
+  
+- **Enhanced User Experience**: Implements several basic enhancements to improve the navigation experience, such as:
+  - Limiting the camera's distance from the scene
+  - Preventing the camera from flipping upside down
+  - Clamping the possible scene depth for the mouse
+  - Adjusting the camera's movement speed when zooming based on the scene's depth
+  - Optionally prohibiting rotation below the ground plane
+  - Providing an option to reset the camera to its initial position
+  
+- **World-In-Hand-Controls Visualiser**: A visualiser class to help developers understand and adapt the navigation to their needs, displaying constraints and other helpful information like mouse position and rotation axes.
+
+- **Easy Integration**: Straightforward integration into Three.js projects with minimal additional steps compared to standard OrbitControls (see usage).
+
+- **Flexible Usage**: Compatible with both mouse and touch interactions.
+
 
 ## Usage
+The usage of World-In-Hand Navigation is mostly similar to Three.js's OrbitControls class. You can install our navigation using a [package manager](https://www.npmjs.com/package/@world-in-hand-controls/threejs-world-in-hand).
+
 ```javascript
 import { WorldInHandControls } from '@world-in-hand-controls/threejs-world-in-hand';
 
@@ -141,3 +164,6 @@ window.addEventListener('resize', () => {
     requestUpdate();
 });
 ```
+
+## Attribution
+The model used in the deployed demo is based on ["City- Shanghai-Sandboxie"](https://sketchfab.com/3d-models/city-shanghai-sandboxie-3eab4438b9b34ceeaa35367429732970) by [Michael Zhang](https://sketchfab.com/beyond.zht) licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/)
