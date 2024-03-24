@@ -68,6 +68,8 @@ export class WorldInHandControls extends EventTarget {
 	Configuration variables
 	 */
 
+	// camera up-vector has to be the y-axis for now
+	protected cameraUpVector = new Vector3(0, 1, 0);
 	protected _useBottomOfBoundingBoxAsGroundPlane = true;
 	protected _allowRotationBelowGroundPlane = true;
 	protected _rotateAroundMousePosition = false;
@@ -76,7 +78,7 @@ export class WorldInHandControls extends EventTarget {
 	Navigation resilience
 	 */
 
-	protected angleToYAxis!: number;
+	protected angleToUpVector!: number;
 	protected maxLowerRotationAngle!: number;
 	protected maxPanZoomDistance!: number;
 	protected groundPlaneHeight!: number;
@@ -179,7 +181,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.updateFurthestSceneDepth();
 		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
-		if(!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
+		if (!this._rotateAroundMousePosition) this._visualiser?.update({ rotationCenter: this.cameraLookAt });
 	}
 
 	protected rotate(delta: Vector2): void {
@@ -187,13 +189,13 @@ export class WorldInHandControls extends EventTarget {
 		const rotationCenterToCamera = this.camera.position.clone().sub(rotationCenter);
 		const cameraToCameraLookAt = this.cameraLookAt.clone().sub(this.camera.position);
 
-		const cameraXAxis = new Vector3().crossVectors(this.camera.getWorldDirection(new Vector3()).negate(), this.camera.up).normalize();
+		const cameraXAxis = new Vector3().crossVectors(this.camera.getWorldDirection(new Vector3()).negate(), this.cameraUpVector).normalize();
 		const rotationMatrix = new Matrix4().makeRotationY(-delta.x);
 
 		// prevent illegal rotation of the camera onto the y-axis (i.e., the up-vector)
-		let nextAngleToYAxis = this.angleToYAxis - delta.y;
+		let nextAngleToYAxis = this.angleToUpVector - delta.y;
 		nextAngleToYAxis = Math.max(Math.min(nextAngleToYAxis, this.maxLowerRotationAngle), 0.001);
-		const rotationDelta = this.angleToYAxis - nextAngleToYAxis;
+		const rotationDelta = this.angleToUpVector - nextAngleToYAxis;
 		rotationMatrix.multiply(new Matrix4().makeRotationAxis(cameraXAxis, rotationDelta));
 
 		rotationCenterToCamera.applyMatrix4(rotationMatrix);
@@ -206,7 +208,7 @@ export class WorldInHandControls extends EventTarget {
 		this.camera.lookAt(this.cameraLookAt);
 
 		if (this._rotateAroundMousePosition) this.setupAngleToYAxis();
-		else this.angleToYAxis = nextAngleToYAxis;
+		else this.angleToUpVector = nextAngleToYAxis;
 		this.updateFurthestSceneDepth();
 		this._visualiser?.update({ rotationCenter: rotationCenter });
 	}
@@ -338,7 +340,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.panStart.copy(this.mouseWorldPosition);
 		// use negative y to make plane have positive y
-		this.panHeightGuide.copy(new Plane(this.camera.up, -this.panStart.y));
+		this.panHeightGuide.copy(new Plane(this.cameraUpVector, -this.panStart.y));
 		this._visualiser?.update({ panHeightGuideHeight: this.panStart.y });
 	}
 
@@ -564,6 +566,7 @@ export class WorldInHandControls extends EventTarget {
 		const w = rect.width;
 		const h = rect.height;
 
+		// convert to NDC, flip y-axis in the process
 		this.mousePosition.x = ( x / w ) * 2 - 1;
 		this.mousePosition.y = 1 - ( y / h ) * 2;
 
@@ -636,7 +639,7 @@ export class WorldInHandControls extends EventTarget {
 		this.groundPlaneHeight = this._useBottomOfBoundingBoxAsGroundPlane ? box.min.y : 0;
 
 		// Use negative offset to achieve positive y-height of plane
-		this.groundPlane = new Plane(this.camera.up, -this.groundPlaneHeight);
+		this.groundPlane = new Plane(this.cameraUpVector, -this.groundPlaneHeight);
 
 		this.updateFurthestSceneDepth();
 		this._visualiser?.update({ boundingSphere: this.boundingSphere, groundPlaneHeight: this.groundPlaneHeight });
@@ -658,8 +661,8 @@ export class WorldInHandControls extends EventTarget {
 	protected setupAngleToYAxis(): void {
 		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resilience!');
 
-		this.angleToYAxis = this.camera.position.clone().sub(this.cameraLookAt.clone().setY(this.groundPlaneHeight)).angleTo(this.camera.up);
-		if (this.angleToYAxis === 0 || this.angleToYAxis === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
+		this.angleToUpVector = this.camera.position.clone().sub(this.cameraLookAt.clone().setY(this.groundPlaneHeight)).angleTo(this.cameraUpVector);
+		if (this.angleToUpVector === 0 || this.angleToUpVector === Math.PI) console.warn('Camera position is on y-axis. This will lead to navigation defects. Consider moving your camera.');
 	}
 
 	/**
