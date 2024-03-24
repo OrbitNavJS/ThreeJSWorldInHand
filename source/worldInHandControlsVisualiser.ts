@@ -1,4 +1,4 @@
-import { 
+import {
 	PerspectiveCamera,
 	Mesh,
 	Group,
@@ -9,7 +9,7 @@ import {
 	Plane,
 	Vector3,
 	DoubleSide,
-	CylinderGeometry
+	CylinderGeometry, Material, Object3D
 } from 'three';
 
 export type UpdateData = {
@@ -35,9 +35,10 @@ export type VisibilitySetters = {
 export class WorldInHandControlsVisualiser {
 	protected camera: PerspectiveCamera;
 
-	/**
+	/*
 	 * Toggle visibility of debug visualisers
 	 */
+
 	protected _showMouseWorldPosition: boolean = false;
 	protected _showGroundPlane: boolean = false;
 	protected _showBackPlane: boolean = false;
@@ -46,9 +47,10 @@ export class WorldInHandControlsVisualiser {
 	protected _showPanHeightGuide: boolean = false;
 	protected _showRotationCenter: boolean = false;
 
-	/**
+	/*
 	 * Scene objects
 	 */
+
 	protected mouseWorldPosition: Mesh;
 	protected groundPlane: Mesh;
 	protected backPlane: Mesh;
@@ -62,7 +64,10 @@ export class WorldInHandControlsVisualiser {
 	constructor(camera: PerspectiveCamera, showMouseWorldPosition?: boolean, showGroundPlane?: boolean, showBackPlane?: boolean, showBoundingSphere?: boolean, showMaxNavigationSphere?: boolean, showPanHeightGuide?: boolean, showRotationCenter?: boolean) {
 		this.camera = camera;
 
-		/** Create basic scene objects */
+		/*
+		Create basic scene objects
+		*/
+
 		this.group = new Group();
 		// ensure correct render order
 		this.group.renderOrder = Number.MAX_SAFE_INTEGER;
@@ -134,7 +139,10 @@ export class WorldInHandControlsVisualiser {
 			this.rotationCenter.add(cylinderVertical);
 		}
 
-		/** Toggle visibilty */ 
+		/*
+		Toggle visibilty
+		*/
+
 		this.showMouseWorldPosition = (showMouseWorldPosition !== undefined) ? showMouseWorldPosition : false;
 		this.showGroundPlane = (showGroundPlane !== undefined) ? showGroundPlane : false;
 		this.showBackPlane = (showBackPlane !== undefined) ? showBackPlane : false;
@@ -204,6 +212,26 @@ export class WorldInHandControlsVisualiser {
 			showPanHeightGuide: false,
 			showRotationCenter: false
 		});
+
+		this.mouseWorldPosition.geometry.dispose();
+		(this.mouseWorldPosition.material as Material).dispose();
+		this.groundPlane.geometry.dispose();
+		(this.groundPlane.material as Material).dispose();
+		this.backPlane.geometry.dispose();
+		(this.backPlane.material as Material).dispose();
+		this.boundingSphere.geometry.dispose();
+		(this.boundingSphere.material as Material).dispose();
+		this.maxNavigationSphere.geometry.dispose();
+		(this.maxNavigationSphere.material as Material).dispose();
+		this.panHeightGuide.geometry.dispose();
+		(this.panHeightGuide.material as Material).dispose();
+
+		this.rotationCenter.traverse((object: Object3D) => {
+			(object as Mesh).geometry.dispose();
+			((object as Mesh).material as Material).dispose();
+		});
+		this.rotationCenter.clear();
+		this.group.clear();
 	}
 
 	public setVisibility(visibilities: VisibilitySetters) {
@@ -216,9 +244,9 @@ export class WorldInHandControlsVisualiser {
 		if (visibilities.showRotationCenter) this.showRotationCenter = visibilities.showRotationCenter;
 	}
 		
-	/**
-	 * Setters
-	 */
+	/*
+	Setters
+	*/
 
 	public set showMouseWorldPosition(value: boolean) {
 		if (this.showMouseWorldPosition === value) return;
@@ -283,9 +311,9 @@ export class WorldInHandControlsVisualiser {
 		else this.group.remove(this.rotationCenter);
 	}
 
-	/**
-	 * Scale setters
-	 */
+	/*
+	Scale setters
+	*/
 
 	public set mouseWorldPositionSize(value: number) {
 		this.mouseWorldPosition.scale.set(value, value, value);
@@ -308,9 +336,9 @@ export class WorldInHandControlsVisualiser {
 		(this.rotationCenter.children[1] as Mesh).scale.set(value, value, value);
 	}
 
-	/**
-	 * Color setters
-	 */
+	/*
+	Color setters
+	*/
 	
 	public set mouseWorldPositionColor(value: number){
 		(this.mouseWorldPosition.material as MeshBasicMaterial).color.set(value);
@@ -341,9 +369,9 @@ export class WorldInHandControlsVisualiser {
 		((this.rotationCenter.children[1] as Mesh).material as MeshBasicMaterial).color.set(value);
 	}
 
-	/**
-	 * Opacity setters
-	 */
+	/*
+	Opacity setters
+	*/
 
 	public set mouseWorldPositionOpacity(value: number){
 		(this.mouseWorldPosition.material as MeshBasicMaterial).opacity = value;
