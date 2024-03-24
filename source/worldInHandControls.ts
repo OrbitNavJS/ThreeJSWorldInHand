@@ -148,7 +148,7 @@ export class WorldInHandControls extends EventTarget {
 		this.zoomDirection.copy(this.mouseWorldPosition).sub(this.camera.position);
 
 		// prevent zooms that put geometry between camera near plane and camera
-		const cameraZAxisWorld = new Vector3(0, 0, 1).unproject(this.camera).normalize();
+		const cameraZAxisWorld = this.camera.getWorldDirection(new Vector3());
 		this.nearPlane.setFromNormalAndCoplanarPoint(cameraZAxisWorld, this.camera.position.clone().addScaledVector(cameraZAxisWorld, this.camera.near * 1.1));
 
 		const distanceToNearPlane = this.nearPlane.distanceToPoint(this.mouseWorldPosition);
