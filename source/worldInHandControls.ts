@@ -207,7 +207,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(this.cameraLookAt);
 
-		if (this._rotateAroundMousePosition) this.setupAngleToYAxis();
+		if (this._rotateAroundMousePosition) this.setupAngleToCameraUp();
 		else this.angleToUpVector = nextAngleToYAxis;
 		this.updateFurthestSceneDepth();
 		this._visualiser?.update({ rotationCenter: rotationCenter });
@@ -518,7 +518,7 @@ export class WorldInHandControls extends EventTarget {
 
 		this.camera.lookAt(this.cameraLookAt);
 
-		this.setupAngleToYAxis();
+		this.setupAngleToCameraUp();
 		this.updateFurthestSceneDepth();
 		this._visualiser?.update({ maxNavigationSphereCenter: this.camera.position });
 	}
@@ -531,7 +531,7 @@ export class WorldInHandControls extends EventTarget {
 		this.cameraLookAt.copy(this.originalCameraLookAt);
 		this.camera.lookAt(this.cameraLookAt);
 
-		this.setupAngleToYAxis();
+		this.setupAngleToCameraUp();
 
 		this.dispatchEvent(new Event('change'));
 	}
@@ -616,7 +616,7 @@ export class WorldInHandControls extends EventTarget {
 	protected setupResilience(): void {
 		this.setupMaxLowerRotationAngle();
 		this.setupBoundingSphere();
-		this.setupAngleToYAxis();
+		this.setupAngleToCameraUp();
 	}
 
 	protected setupBoundingSphereBound = this.setupBoundingSphere.bind(this);
@@ -655,10 +655,10 @@ export class WorldInHandControls extends EventTarget {
 	}
 
 	/**
-	 * Sets angleToYAxis as the current angle between the camera look-to vector (i.e., the vector between the camera and what it's looking at) and the y-axis.
+	 * Sets angleToYAxis as the current angle between the camera look-to vector (i.e., the vector between the camera and what it's looking at) and the cameraUp-vector (currently only the y-axis).
 	 * @protected
 	 */
-	protected setupAngleToYAxis(): void {
+	protected setupAngleToCameraUp(): void {
 		if (this.camera.position.equals(new Vector3(0, 0, 0))) console.warn('Camera is at (0, 0, 0). This will break the navigation resilience!');
 
 		this.angleToUpVector = this.camera.position.clone().sub(this.cameraLookAt.clone().setY(this.groundPlaneHeight)).angleTo(this.cameraUpVector);

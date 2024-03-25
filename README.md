@@ -6,7 +6,7 @@ This navigation method aims to enhance the user experience by allowing users to 
 
 ▶️ [Demo](https://orbitnavjs.github.io/ThreeJSWorldInHand/)
 
-Learn more about the project and visit our [Behind-the-project Website](https://github.com/OrbitNavJS/WIHNavigationWebsite)!
+Learn more about the project and visit our [Behind-the-project Website](https://orbitnavjs.github.io/WIHNavigationWebsite/)!
 
 ## Features
 - **Precise Interaction**: Based on the exact mouse position projected onto the scene, allowing users to grab a point or an object to pan, rotate, or zoom with precision.
@@ -164,6 +164,27 @@ window.addEventListener('resize', () => {
     requestUpdate();
 });
 ```
+
+## WorldInHandControlsVisualiser Class
+The visualiser class we implemented provides visual aids to help you debug. To use it, simply construct a ```const visualiser = new WorldInHandControlsVisualiser(camera);```.
+The following navigation attributes may be visualised:
+
+-  The position of the mouse in world coordinates (```visualiser.showMouseWorldPosition = true;```)
+-  The selected ground plane (```visualiser.showGroundPlane = true;```)
+- The virtual back plane behind the scene (```visualiser.showBackPlane = true;```)
+- The bounding sphere around the scene (```visualiser.showBoundingSphere = true;```)
+- The sphere limiting the panning and zooming distance (```visualiser.showMaxNavigationSphere = true;```)
+- The plane onto which to project each mouse position in world coordinates when panning (```visualiser.showPanHeightGuide = true;```)
+- The center of rotation (```visualiser.showRotationCenter = true;```)
+
+If you want to batch (un-)select visualisers, you may also call ```visualiser.setVisibility({ showMouseWorldPosition: true, ... });```,
+where all the names described above may be passed in one object. It is not necessary for all parameters to have the same value.
+
+You may also pass the visibilities during visualiser construction. 
+
+You may set the color of each visualiser object using ```visualiser.<object_name>Color = <color_as_a_number>;```.
+For the ```mousePosition, panHeightGuide, groundPlane, backPlane and rotationCenter``` objects, you may also set their
+size and opacity: ```visualiser.<object_name>Size = <some_number>;``` and ```visualiser.<object_name>Opacity = <some_number_between_0_and_1>;```
 
 ## Attribution
 The model used in the deployed demo is based on ["City- Shanghai-Sandboxie"](https://sketchfab.com/3d-models/city-shanghai-sandboxie-3eab4438b9b34ceeaa35367429732970) by [Michael Zhang](https://sketchfab.com/beyond.zht) licensed under [CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/)
