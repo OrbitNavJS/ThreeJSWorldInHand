@@ -1,7 +1,7 @@
 {
   "name": "@world-in-hand-controls/threejs-world-in-hand",
   "private": false,
-  "version": "0.0.11",
+  "version": "0.0.12",
   "type": "module",
   "devDependencies": {
     "@types/three": "^0.162.0",
@@ -39,7 +39,7 @@
   "bugs": {
     "url": "https://github.com/OrbitNavJS/ThreeJSWorldInHand/issues"
   },
-  "homepage": "https://github.com/OrbitNavJS/ThreeJSWorldInHand#readme",
+  "homepage": "https://orbitnavjs.github.io/WIHNavigationWebsite/",
   "scripts": {
     "build": "vite build --mode production",
     "lib": "vite build --mode library"
