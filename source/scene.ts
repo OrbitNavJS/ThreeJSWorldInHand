@@ -170,7 +170,8 @@ function init() {
 		const navigationSettings = {
 			rotateAroundMouse: true,
 			rotateBelowGroundPlane: true,
-			boundingBoxGroundPlane: false
+			boundingBoxGroundPlane: false,
+			panUsingLeftMouse: false
 		};
 		navigationFolder.add(navigationMode, 'current', navigationModes).name('mode').onChange((value: string) => {
 			if (value === 'world-in-hand') {
@@ -186,6 +187,7 @@ function init() {
 				cameraControls.rotateAroundMousePosition = navigationSettings.rotateAroundMouse;
 				cameraControls.allowRotationBelowGroundPlane = navigationSettings.rotateBelowGroundPlane;
 				cameraControls.useBottomOfBoundingBoxAsGroundPlane = navigationSettings.boundingBoxGroundPlane;
+				cameraControls.panWithLeftMouseButton = navigationSettings.panUsingLeftMouse;
 
 				navigationSettingsFolder = navigationFolder.addFolder('Navigation Settings');
 				navigationSettingsFolder.add(navigationSettings, 'rotateAroundMouse').name('Rotate around the mouse position').onChange((value: boolean) => {
@@ -196,6 +198,9 @@ function init() {
 				});
 				navigationSettingsFolder.add(navigationSettings, 'boundingBoxGroundPlane').name('Use the bottom of the bounding box as the ground plane').onChange((value: boolean) => {
 					(cameraControls as WorldInHandControls).allowRotationBelowGroundPlane = value;
+				});
+				navigationSettingsFolder.add(navigationSettings, 'panUsingLeftMouse').name('Switch the mouse buttons').onChange((value: boolean) => {
+					(cameraControls as WorldInHandControls).panWithLeftMouseButton = value;
 				});
 				reset = navigationFolder.add({ reset: () => { (cameraControls as WorldInHandControls).reset(); } }, 'reset').name('Reset navigation');
 			} else if (value === 'orbit') {

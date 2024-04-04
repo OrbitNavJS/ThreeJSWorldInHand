@@ -57,6 +57,8 @@ export class WorldInHandControls extends EventTarget {
 	protected panStart = new Vector3();
 	protected panHeightGuide = new Plane();
 
+	protected mouseButtonConfiguration = { pan: 2, rotate: 0 };
+
 	/*
 	Reset functionality
 	 */
@@ -271,13 +273,13 @@ export class WorldInHandControls extends EventTarget {
 		} else {
 			switch (event.button) {
 			// left mouse
-			case 0:
+			case this.mouseButtonConfiguration.rotate:
 				this.handlePointerDownRotate(event);
 				this.domElement.addEventListener('pointermove', this.handlePointerMoveRotateBound);
 				break;
 
 			// right mouse
-			case 2:
+			case this.mouseButtonConfiguration.pan:
 				this.handlePointerDownPan(event);
 				this.domElement.addEventListener('pointermove', this.handlePointerMovePanBound);
 				break;
@@ -787,6 +789,18 @@ export class WorldInHandControls extends EventTarget {
 	 */
 	public set rotateAroundMousePosition(value: boolean) {
 		this._rotateAroundMousePosition = value;
+	}
+
+	/**
+	 * Whether to switch the function of the mouse buttons.
+	 * If true, using the left mouse button will pan the scene, the right mouse button will rotate it.
+	 * If false, using the right mouse button will pan the scene, the left mouse button will rotate it (this is the default).
+	 */
+	public set panWithLeftMouseButton(value: boolean) {
+		if (value)
+			this.mouseButtonConfiguration = { pan: 0, rotate: 2 };
+		else
+			this.mouseButtonConfiguration = { pan: 2, rotate: 0 };
 	}
 
 	/**
