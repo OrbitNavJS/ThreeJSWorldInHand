@@ -1,20 +1,18 @@
 {
   "name": "@world-in-hand-controls/threejs-world-in-hand",
   "private": false,
-  "version": "0.0.13",
+  "version": "0.0.14",
   "type": "module",
   "devDependencies": {
-    "@types/three": "^0.163.0",
-    "@typescript-eslint/eslint-plugin": "^7.1.1",
-    "@typescript-eslint/parser": "^7.1.1",
-    "eslint": "^8.57.0",
+    "@types/three": "^0.164.0",
+    "eslint": "^9.2.0",
     "lil-gui": "^0.19.2",
     "typescript": "^5.3.3",
     "vite": "^5.1.5",
     "vite-plugin-dts": "^3.7.2"
   },
   "peerDependencies": {
-    "three": "^0.163.0"
+    "three": "^0.164.1"
   },
   "description": "A navigation class for three.js implementing world-in-hand navigation.",
   "main": "dist/three-world-in-hand-controls.js",
