@@ -478,7 +478,7 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.removeEventListener( 'wheel', this.onMouseWheelBound);
 		this.domElement.removeEventListener( 'contextmenu', this.preventContextMenu);
 
-		this.navigationRenderTarget.depthTexture.dispose();
+		this.navigationRenderTarget.depthTexture?.dispose();
 		this.navigationRenderTarget.texture.dispose();
 		this.navigationRenderTarget.dispose();
 
@@ -782,6 +782,8 @@ export class WorldInHandControls extends EventTarget {
 	 */
 	public set useBottomOfBoundingBoxAsGroundPlane(value: boolean) {
 		this._useBottomOfBoundingBoxAsGroundPlane = value;
+		this.setupBoundingSphere();
+		this.setupAngleToCameraUp();
 	}
 
 	/**
