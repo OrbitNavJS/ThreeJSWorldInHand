@@ -4,12 +4,13 @@
   "version": "0.0.14",
   "type": "module",
   "devDependencies": {
-    "@types/three": "^0.164.0",
-    "eslint": "^9.2.0",
+    "@types/three": "^0.164.1",
+    "eslint": "^8.57.0",
     "lil-gui": "^0.19.2",
     "typescript": "^5.3.3",
     "vite": "^5.1.5",
-    "vite-plugin-dts": "^3.7.2"
+    "vite-plugin-dts": "^3.7.2",
+    "typescript-eslint": "^7.10.0"
   },
   "peerDependencies": {
     "three": "^0.164.1"
