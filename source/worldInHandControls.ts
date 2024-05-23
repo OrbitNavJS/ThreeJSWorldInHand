@@ -241,6 +241,8 @@ export class WorldInHandControls extends EventTarget {
 	protected onMouseWheel(event: WheelEvent): void {
 		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
 
+		this.dispatchEvent(new Event('changeStart'));
+
 		event.preventDefault();
 		this.handleMouseWheel(event);
 	}
@@ -248,6 +250,8 @@ export class WorldInHandControls extends EventTarget {
 	protected onPointerDownBound = this.onPointerDown.bind(this);
 	protected onPointerDown(event: PointerEvent): void {
 		if (!this.sceneHasMesh) this.warnAboutEmptyScene();
+
+		this.dispatchEvent(new Event('changeStart'));
 
 		this.domElement.removeEventListener('pointermove', this.handlePointerMovePanBound);
 		this.domElement.removeEventListener('pointermove', this.handlePointerMoveRotateBound);
@@ -297,7 +301,10 @@ export class WorldInHandControls extends EventTarget {
 		this.domElement.removeEventListener('pointermove', this.handleTouchMoveZoomRotateBound);
 
 		// always true for mouse events
-		if (this.pointers.length === 0) this.domElement.removeEventListener('pointerup', this.onPointerUpBound);
+		if (this.pointers.length === 0) {
+			this.domElement.removeEventListener('pointerup', this.onPointerUpBound);
+			this.dispatchEvent(new Event('changeEnd'));
+		}
 		// call onPointerDown to enable panning when removing only one finger
 		else this.onPointerDown(this.pointers[0]);
 	}
@@ -309,6 +316,7 @@ export class WorldInHandControls extends EventTarget {
 		this.zoom(-(event.deltaY / Math.abs(event.deltaY)));
 
 		this.dispatchEvent(new Event('change'));
+		this.dispatchEvent(new Event('changeEnd'));
 	}
 
 	protected handlePointerDownRotateBound = this.handlePointerDownRotate.bind(this);
