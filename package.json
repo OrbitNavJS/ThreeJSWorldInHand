@@ -4,7 +4,7 @@
   "version": "0.0.16",
   "type": "module",
   "devDependencies": {
-    "@types/three": "^0.164.1",
+    "@types/three": "^0.165.0",
     "eslint": "^8.57.0",
     "lil-gui": "^0.19.2",
     "typescript": "^5.3.3",
@@ -13,7 +13,7 @@
     "typescript-eslint": "^7.10.0"
   },
   "peerDependencies": {
-    "three": "^0.164.1"
+    "three": "^0.165.0"
   },
   "description": "A navigation class for three.js implementing world-in-hand navigation.",
   "main": "dist/three-world-in-hand-controls.js",
