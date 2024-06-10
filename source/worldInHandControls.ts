@@ -149,6 +149,8 @@ export class WorldInHandControls extends EventTarget {
 	 */
 
 	protected zoom(direction: number): void {
+		if (isNaN(direction)) return;
+
 		this.zoomDirection.copy(this.mouseWorldPosition).sub(this.camera.position);
 
 		// prevent zooms that put geometry between camera near plane and camera
@@ -311,6 +313,8 @@ export class WorldInHandControls extends EventTarget {
 
 	protected handleMouseWheelBound = this.handleMouseWheel.bind(this);
 	protected handleMouseWheel(event: WheelEvent): void {
+		if (event.deltaY === 0) return;
+
 		this.updateMouseParameters(event.clientX, event.clientY);
 
 		this.zoom(-(event.deltaY / Math.abs(event.deltaY)));
