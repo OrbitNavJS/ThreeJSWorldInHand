@@ -20,7 +20,7 @@ export type UpdateData = {
 	panHeightGuideHeight?: number,
 	maxNavigationSphereCenter?: Vector3,
 	rotationCenter?: Vector3,
-}
+};
 
 export type VisibilitySetters = {
 	showMouseWorldPosition?: boolean,
@@ -30,7 +30,7 @@ export type VisibilitySetters = {
 	showMaxNavigationSphere?: boolean,
 	showPanHeightGuide?: boolean,
 	showRotationCenter?: boolean
-}
+};
 
 export class WorldInHandControlsVisualiser {
 	protected camera: PerspectiveCamera;
