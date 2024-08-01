@@ -431,7 +431,7 @@ export class WorldInHandControls extends EventTarget {
 			uniform sampler2D uColorTexture;
 			
 			void main() {
-				gl_FragColor = LinearTosRGB(texture(uColorTexture, vUV));
+				gl_FragColor = sRGBTransferOETF(texture(uColorTexture, vUV));
 			}
 			`;
 
